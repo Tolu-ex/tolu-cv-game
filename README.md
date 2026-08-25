@@ -25,6 +25,9 @@ bundle.
 
 - **W / A / S / D** or **Arrow keys** — drive
 - **Space** — brake
+- **L** — headlights on/off
+- **Drag** (left or right button) — orbit the camera, Roblox-style
+- **Scroll** — zoom in/out
 - Drive the truck through a glowing portal archway to enter that world's
   story card, then keep driving through the world's exit portal to return to
   the nature world.
@@ -54,9 +57,23 @@ Transmission renders whatever is behind the pane, and behind a game-truck
 windscreen there is very little — so the glass goes black and reads as a hole.
 A bright, strongly-reflective surface sells "glass" far better at this scale.
 
-**Edges.** Every panel uses `RoundedBoxGeometry`. Nothing in the real world has
-a perfectly sharp 90° corner, and the bevel highlight is most of what separates
-a "box" from a "panel".
+**Surfaces.** The cab and body are **extruded side profiles**, not stacked
+boxes. A profile carries the whole silhouette in one surface — raked screen
+flowing into a curved roof, wheel arches cut into the lower edge, a character
+line running cab to tail — and the extrusion bevel rounds every edge of it at
+once. Stacking rounded boxes can never produce a continuous surface, which is
+exactly why the earlier version read as assembled rather than designed. Smaller
+parts still use `RoundedBoxGeometry`, since nothing real has a sharp 90° corner.
+
+Arch sizing is derived rather than eyeballed: at the body's lower edge a 0.58 m
+tyre is `2·√(0.58² − 0.31²) ≈ 0.98` wide, so the opening has to exceed that.
+Each arch also gets a liner — the extrusion cuts clean through the full width,
+so without one you see daylight through the wheel wells.
+
+**Lights.** Headlamps are real spotlights, switchable in every world with `L`,
+not just on at night. Brake lamps respond to braking, reversing lamps throw a
+pool of light behind the truck, and the indicators blink at ~1.5 Hz (the real
+automotive rate) on whichever side you are steering toward.
 
 **Feel.** Longitudinal acceleration drives pitch and cornering drives roll,
 each through a damped spring. Measured behaviour:
@@ -68,7 +85,11 @@ each through a damped spring. Measured behaviour:
 | hard braking | +3.5° (dive) | 0° | 64 |
 
 The chase camera widens its FOV with speed, swings wide of turns to let you see
-into the corner, and adds speed-scaled shake.
+into the corner, and adds speed-scaled shake. Dragging the mouse orbits it
+around the truck and the wheel zooms (5–26 m); the orbit is stored as an
+*offset* from the behind-the-truck pose rather than an absolute angle, so the
+camera still follows your heading while you look around, and it drifts gently
+back behind you once you are driving and have let go of the mouse.
 [`TruckFX.js`](src/entities/TruckFX.js) adds wheel dust from a recycled sprite
 pool (one draw call, no per-puff allocation); dust is tinted per world via
 `dustColor`, so Ile-Ife throws red laterite and Haarlem throws grey cobble grit.

@@ -11,12 +11,12 @@ import { PALETTE } from '../utils/colors.js';
 const C = PALETTE.truck;
 
 // --- Layout constants (Z+ is forward) ---------------------------------------
-const WHEEL_R = 0.52;
-const TRACK = 1.06;        // half-distance between left/right wheel centres
-const AXLE_FRONT = 2.35;
-const AXLE_REAR_A = -1.45;
-const AXLE_REAR_B = -2.62;
-const FRAME_Y = 0.74;
+const WHEEL_R = 0.58;      // bigger wheels: the old ones under-filled the arches
+const TRACK = 1.09;        // half-distance between left/right wheel centres
+const AXLE_FRONT = 2.46;
+const AXLE_REAR_A = -1.44;
+const AXLE_REAR_B = -2.74;
+const FRAME_Y = 0.82;
 
 // ---------------------------------------------------------------------------
 // Textures
@@ -84,6 +84,35 @@ function chevronTexture() {
 function rbox(w, h, d, radius = 0.035, segments = 2) {
   const r = Math.min(radius, Math.min(w, h, d) / 2 - 1e-4);
   return new RoundedBoxGeometry(w, h, d, segments, r);
+}
+
+/**
+ * Extrudes a 2D side-profile across the vehicle's width.
+ *
+ * This is the difference between a designed body and a pile of boxes. A profile
+ * carries the whole silhouette in one surface — raked screen flowing into a
+ * curved roof, wheel arches cut into the lower edge, a character line — and the
+ * extrusion bevel rounds every edge of it at once. Stacking rounded boxes can
+ * never produce a continuous surface, which is exactly why it reads as a toy.
+ *
+ * Shape space: +X is forward (world +Z), +Y is up. The result is rotated so the
+ * extrusion runs across the vehicle, and centred on X.
+ */
+function extrudeProfile(shape, width, { bevel = 0.045, curveSegments = 10 } = {}) {
+  const geo = new THREE.ExtrudeGeometry(shape, {
+    depth: Math.max(0.01, width - bevel * 2),
+    bevelEnabled: true,
+    bevelThickness: bevel,
+    bevelSize: bevel,
+    bevelSegments: 2,
+    curveSegments,
+  });
+  geo.rotateY(-Math.PI / 2);        // shape +X -> world +Z
+  geo.computeBoundingBox();         // centre across the width
+  const bb = geo.boundingBox;
+  geo.translate(-(bb.min.x + bb.max.x) / 2, 0, 0);
+  geo.computeVertexNormals();
+  return geo;
 }
 
 function part(geo, material, { cast = true, receive = true } = {}) {
@@ -206,6 +235,9 @@ export class Truck {
       hydraulic: chromeMaterial(0xd8dde2, { roughness: 0.05 }),
       amber: lensMaterial(0xffa71a, 1.1),
       chargeLamp: lensMaterial(0x4dffa8, 1.6),
+      indicator: lensMaterial(0xff8c1a, 0.12),
+      arch: plasticMaterial(0x15181c, { roughness: 0.95 }),
+      drl: lensMaterial(0xdfefff, 1.5),
       headlight: lensMaterial(0xfff6de, 1.0),
       tail: lensMaterial(0xff2a1f, 0.55),
       reverse: lensMaterial(0xffffff, 0.0),
@@ -341,222 +373,346 @@ export class Truck {
   }
 
   // --- Cab -----------------------------------------------------------------
+  // Built from an extruded side profile rather than stacked boxes, so the
+  // screen rake, roof crown and lower fascia are one continuous surface.
   _buildCab() {
     const M = this.mats;
     const cab = new THREE.Group();
-    cab.position.set(0, 0.86, 2.32);
+    const CAB_Z = 1.34;   // cab rear plane, world Z
+    const CAB_Y = 0.82;   // cab floor, world Y
+    const CAB_W = 2.42;
+    cab.position.set(0, CAB_Y, CAB_Z);
     this.body.add(cab);
     this.cab = cab;
+    this.cabDims = { CAB_Z, CAB_Y, CAB_W, len: 2.24 };
 
-    // Cab-over-engine: near-vertical front face, glass in the upper third.
-    // Local y=0 is the top of the chassis rail.
-    const shell = part(rbox(2.36, 1.92, 1.95, 0.12), M.cabPaint);
-    shell.position.y = 0.96;
+    // Profile coords: u forward from the cab's rear plane, v up from the floor.
+    const p = new THREE.Shape();
+    // Front axle sits at world 2.46, i.e. u = 2.46 - CAB_Z = 1.12.
+    const fArch = 1.12, fArchR = 0.62;
+    p.moveTo(0, 0.04);
+    p.lineTo(fArch - fArchR, 0.04);
+    p.absarc(fArch, 0.04, fArchR, Math.PI, 0, true);  // front wheel arch
+    p.lineTo(2.06, 0.04);
+    p.quadraticCurveTo(2.18, 0.06, 2.2, 0.28);
+    p.lineTo(2.2, 0.44);                       // lower fascia
+    p.lineTo(2.24, 1.02);                      // grille face, slight forward lean
+    p.quadraticCurveTo(2.25, 1.28, 2.13, 1.46); // cowl radius into the screen
+    p.lineTo(1.9, 2.06);                       // raked windscreen
+    p.quadraticCurveTo(1.84, 2.22, 1.62, 2.25); // roof front radius
+    p.lineTo(0.42, 2.25);                      // roof
+    p.quadraticCurveTo(0.16, 2.25, 0.1, 2.06); // roof rear radius
+    p.lineTo(0.02, 1.3);
+    p.lineTo(0, 0.04);
+    p.closePath();
+
+    const shell = part(extrudeProfile(p, CAB_W), M.cabPaint);
     cab.add(shell);
+    this.cabProfile = p;
 
-    // Interior. Without something behind the glass the windscreen renders as a
-    // black hole; a blocked-out cabin reads as a cab even at a glance.
-    const cabin = part(rbox(2.0, 0.8, 1.3, 0.05), M.trim, { cast: false });
-    cabin.position.set(0, 1.36, -0.1);
+    // Greenhouse taper: a slightly narrower cap over the glass band makes the
+    // roof read as tapered instead of slab-sided.
+    const capShape = new THREE.Shape();
+    capShape.moveTo(0.16, 1.62);
+    capShape.lineTo(1.98, 1.62);
+    capShape.lineTo(1.9, 2.06);
+    capShape.quadraticCurveTo(1.84, 2.22, 1.62, 2.25);
+    capShape.lineTo(0.42, 2.25);
+    capShape.quadraticCurveTo(0.16, 2.25, 0.1, 2.06);
+    capShape.closePath();
+    const cap = part(extrudeProfile(capShape, CAB_W - 0.1), M.cabPaint);
+    cap.position.y = 0.005;
+    cab.add(cap);
+
+    // --- Glazing -----------------------------------------------------------
+    // Interior first: glass with nothing behind it reads as a hole.
+    const cabin = part(rbox(2.06, 0.86, 1.24, 0.06), M.trim, { cast: false });
+    cabin.position.set(0, 1.72, 1.12);
     cab.add(cabin);
-    const dash = part(rbox(1.9, 0.22, 0.3, 0.04), M.trim, { cast: false });
-    dash.position.set(0, 1.1, 0.6);
+    const dash = part(rbox(2.0, 0.2, 0.44, 0.05), M.trim, { cast: false });
+    dash.position.set(0, 1.5, 1.74);
     cab.add(dash);
-    for (const sx of [-0.52, 0.52]) {
-      const seat = part(rbox(0.44, 0.5, 0.4, 0.08), M.trim, { cast: false });
-      seat.position.set(sx, 1.2, 0.05);
+    for (const sx of [-0.54, 0.54]) {
+      const seat = part(rbox(0.46, 0.54, 0.44, 0.09), M.trim, { cast: false });
+      seat.position.set(sx, 1.52, 1.2);
       cab.add(seat);
     }
-    const wheelRim = part(new THREE.TorusGeometry(0.17, 0.028, 8, 18), M.trim, { cast: false });
-    wheelRim.position.set(-0.52, 1.32, 0.45);
-    wheelRim.rotation.x = 1.15;
-    cab.add(wheelRim);
+    const steer = part(new THREE.TorusGeometry(0.18, 0.03, 8, 20), M.trim, { cast: false });
+    steer.position.set(-0.54, 1.66, 1.6);
+    steer.rotation.x = 1.2;
+    cab.add(steer);
 
-    // Windscreen, lightly raked, set into a dark surround.
-    const wsSurround = part(rbox(2.2, 0.72, 0.08, 0.03), M.trim);
-    wsSurround.position.set(0, 1.45, 0.92);
-    wsSurround.rotation.x = -0.1;
-    cab.add(wsSurround);
-    const windscreen = part(rbox(2.06, 0.66, 0.06, 0.02), M.glass, { cast: false });
-    windscreen.position.set(0, 1.45, 0.98);
-    windscreen.rotation.x = -0.1;
-    cab.add(windscreen);
-    // Wipers.
-    for (const sx of [-0.5, 0.42]) {
-      const wiper = part(rbox(0.68, 0.03, 0.03, 0.012), M.trim, { cast: false });
-      wiper.position.set(sx, 1.13, 1.0);
-      wiper.rotation.z = 0.16;
+    // Windscreen laid on the raked face, angle taken from the profile so the
+    // glass and the surface agree rather than being eyeballed.
+    const wsA = new THREE.Vector2(2.13, 1.46);
+    const wsB = new THREE.Vector2(1.9, 2.06);
+    const wsMid = wsA.clone().add(wsB).multiplyScalar(0.5);
+    const wsLen = wsA.distanceTo(wsB);
+    const wsRake = Math.atan2(wsA.x - wsB.x, wsB.y - wsA.y); // from vertical
+    const screen = part(rbox(2.16, wsLen * 1.02, 0.05, 0.02), M.glass, { cast: false });
+    screen.position.set(0, wsMid.y, wsMid.x + 0.03);
+    screen.rotation.x = -wsRake;
+    cab.add(screen);
+    // Blacked-out surround, marginally larger and just behind.
+    const surround = part(rbox(2.3, wsLen * 1.12, 0.05, 0.02), M.trim);
+    surround.position.set(0, wsMid.y, wsMid.x - 0.01);
+    surround.rotation.x = -wsRake;
+    cab.add(surround);
+    for (const sx of [-0.5, 0.44]) {
+      const wiper = part(rbox(0.7, 0.03, 0.03, 0.012), M.trim, { cast: false });
+      wiper.position.set(sx, wsMid.y - wsLen * 0.36, wsMid.x + 0.09);
+      wiper.rotation.z = 0.15;
+      wiper.rotation.x = -wsRake;
       cab.add(wiper);
     }
 
+    const HW = CAB_W / 2;
     for (const side of [-1, 1]) {
-      // Side glass sits in the door aperture, above the shoulder line.
-      const sideGlass = part(rbox(0.05, 0.58, 1.0, 0.02), M.glass, { cast: false });
-      sideGlass.position.set(side * 1.17, 1.42, 0.05);
-      cab.add(sideGlass);
+      // Door aperture: a shaped opening, not a rectangle stuck on the flank.
+      const doorGlass = part(rbox(0.05, 0.6, 1.02, 0.03), M.glass, { cast: false });
+      doorGlass.position.set(side * (HW - 0.03), 1.74, 1.06);
+      cab.add(doorGlass);
+      // Quarter-light ahead of the door, angled to follow the A-pillar.
+      const quarter = part(rbox(0.05, 0.44, 0.26, 0.02), M.glass, { cast: false });
+      quarter.position.set(side * (HW - 0.03), 1.66, 1.74);
+      quarter.rotation.x = 0.3;
+      cab.add(quarter);
 
-      // Door shut-line, handle and a grab rail up the A-pillar.
-      const shut = part(rbox(0.02, 1.8, 0.03, 0.008), M.trim);
-      shut.position.set(side * 1.19, 0.95, -0.62);
+      // Character line: one crease running the cab's length, picked up again on
+      // the body so the eye reads a single vehicle.
+      const crease = part(rbox(0.045, 0.07, 2.0, 0.02), M.cabPaint);
+      crease.position.set(side * (HW + 0.005), 1.16, 1.16);
+      cab.add(crease);
+
+      const shut = part(rbox(0.025, 1.5, 0.035, 0.01), M.trim);
+      shut.position.set(side * (HW + 0.01), 1.0, 0.52);
       cab.add(shut);
-      const handle = part(rbox(0.05, 0.06, 0.24, 0.02), M.chrome);
-      handle.position.set(side * 1.2, 0.98, -0.2);
+      const handle = part(rbox(0.055, 0.07, 0.26, 0.025), M.chrome);
+      handle.position.set(side * (HW + 0.02), 1.28, 0.94);
       cab.add(handle);
-      const grab = part(new THREE.CylinderGeometry(0.026, 0.026, 0.9, 8), M.chrome);
-      grab.position.set(side * 1.19, 0.85, 0.62);
+      const grab = part(new THREE.CylinderGeometry(0.026, 0.026, 0.94, 8), M.chrome);
+      grab.position.set(side * (HW + 0.01), 1.06, 1.62);
       cab.add(grab);
 
-      // Climbing steps, tucked inboard under the door.
-      for (const [i, y] of [0.1, -0.28].entries()) {
-        const step = part(rbox(0.46, 0.07, 0.34, 0.02), M.darkMetal);
-        step.position.set(side * 0.98, y, 0.16 - i * 0.04);
-        cab.add(step);
+      // Steps recessed into the sill rather than bolted underneath.
+      const stepBox = part(rbox(0.42, 0.62, 0.5, 0.05), M.trim, { cast: false });
+      stepBox.position.set(side * (HW - 0.16), -0.02, 1.1);
+      cab.add(stepBox);
+      for (const [i, v] of [0.08, -0.24].entries()) {
+        const tread = part(rbox(0.44, 0.06, 0.4, 0.02), M.darkMetal);
+        tread.position.set(side * (HW - 0.14), v, 1.1 - i * 0.03);
+        cab.add(tread);
       }
 
-      // Mirror head on a short arm, at windscreen height where it belongs.
-      const stalk = part(new THREE.CylinderGeometry(0.024, 0.024, 0.3, 8), M.darkMetal);
-      stalk.rotation.z = Math.PI / 2;
-      stalk.position.set(side * 1.32, 1.62, 0.72);
-      cab.add(stalk);
-      const mirrorBody = part(rbox(0.08, 0.52, 0.19, 0.04), M.trim);
-      mirrorBody.position.set(side * 1.46, 1.5, 0.72);
+      // Mirror: twin-stalk arm at screen height.
+      const stalkU = part(new THREE.CylinderGeometry(0.022, 0.022, 0.26, 8), M.darkMetal);
+      stalkU.rotation.z = Math.PI / 2;
+      stalkU.position.set(side * (HW + 0.12), 2.02, 1.86);
+      cab.add(stalkU);
+      const stalkL = part(new THREE.CylinderGeometry(0.022, 0.022, 0.26, 8), M.darkMetal);
+      stalkL.rotation.z = Math.PI / 2;
+      stalkL.position.set(side * (HW + 0.12), 1.6, 1.86);
+      cab.add(stalkL);
+      const mirrorBody = part(rbox(0.075, 0.62, 0.2, 0.045), M.trim);
+      mirrorBody.position.set(side * (HW + 0.25), 1.82, 1.86);
       cab.add(mirrorBody);
-      const mirrorGlass = part(rbox(0.02, 0.44, 0.14, 0.01), M.chrome, { cast: false });
-      mirrorGlass.position.set(side * 1.5, 1.5, 0.72);
+      const mirrorGlass = part(rbox(0.02, 0.54, 0.15, 0.01), M.chrome, { cast: false });
+      mirrorGlass.position.set(side * (HW + 0.29), 1.82, 1.86);
       cab.add(mirrorGlass);
     }
 
-    // Grille: recessed dark panel, horizontal slats, badge on the top bar.
-    const grillePanel = part(rbox(2.0, 0.66, 0.1, 0.03), M.trim);
-    grillePanel.position.set(0, 0.62, 0.97);
-    cab.add(grillePanel);
-    for (let i = 0; i < 4; i++) {
-      const slat = part(rbox(1.86, 0.08, 0.07, 0.02), M.darkMetal);
-      slat.position.set(0, 0.4 + i * 0.16, 1.0);
+    // Front arch liner, same reasoning as the rear ones.
+    const fLinerGeo = new THREE.CylinderGeometry(fArchR, fArchR, CAB_W - 0.03, 18, 1, true, 0, Math.PI);
+    fLinerGeo.rotateZ(Math.PI / 2);
+    const fLiner = part(fLinerGeo, M.arch, { cast: false });
+    fLiner.material.side = THREE.DoubleSide;
+    fLiner.position.set(0, 0.04, fArch);
+    cab.add(fLiner);
+
+    // --- Front fascia ------------------------------------------------------
+    // Grille as a shaped identity element, inset into the front face.
+    const grilleSurround = part(rbox(2.1, 0.82, 0.1, 0.05), M.cabPaint);
+    grilleSurround.position.set(0, 0.94, 2.22);
+    cab.add(grilleSurround);
+    const grilleWell = part(rbox(1.88, 0.68, 0.08, 0.03), M.trim);
+    grilleWell.position.set(0, 0.94, 2.26);
+    cab.add(grilleWell);
+    for (let i = 0; i < 3; i++) {
+      const slat = part(rbox(1.76, 0.1, 0.06, 0.025), M.darkMetal);
+      slat.position.set(0, 0.74 + i * 0.2, 2.29);
       cab.add(slat);
     }
-    const badge = part(new THREE.PlaneGeometry(0.66, 0.26), M.decal, { cast: false, receive: false });
-    badge.position.set(0, 1.02, 0.99);
+    const badge = part(new THREE.PlaneGeometry(0.68, 0.29), M.decal, { cast: false, receive: false });
+    badge.position.set(0, 1.32, 2.27);
     cab.add(badge);
 
-    // Bumper with plate; headlamp clusters live in _buildLights.
-    const bumper = part(rbox(2.4, 0.4, 0.4, 0.08), M.bumper);
-    bumper.position.set(0, -0.02, 0.9);
+    // Bumper wrapping into the corners, with a valance under it.
+    const bumper = part(rbox(2.46, 0.42, 0.42, 0.1), M.bumper);
+    bumper.position.set(0, 0.3, 2.2);
     cab.add(bumper);
-    const plate = part(new THREE.PlaneGeometry(0.46, 0.13), M.plate, { cast: false });
-    plate.position.set(0.56, -0.02, 1.11);
+    for (const side of [-1, 1]) {
+      const corner = part(rbox(0.3, 0.5, 0.5, 0.12), M.bumper);
+      corner.position.set(side * 1.12, 0.32, 2.06);
+      cab.add(corner);
+    }
+    const valance = part(rbox(2.0, 0.18, 0.3, 0.06), M.trim);
+    valance.position.set(0, 0.05, 2.16);
+    cab.add(valance);
+    const plate = part(new THREE.PlaneGeometry(0.5, 0.14), M.plate, { cast: false });
+    plate.position.set(0.58, 0.3, 2.42);
     cab.add(plate);
 
-    // Roof: sun visor, aero deflector.
-    const visor = part(rbox(2.3, 0.08, 0.36, 0.03), M.cabPaint);
-    visor.position.set(0, 1.87, 0.86);
-    visor.rotation.x = 0.2;
+    // Roof: visor integrated into the crown, plus marker lamps.
+    const visor = part(rbox(2.36, 0.09, 0.34, 0.04), M.cabPaint);
+    visor.position.set(0, 2.26, 2.02);
+    visor.rotation.x = 0.26;
     cab.add(visor);
-    const deflector = part(rbox(2.2, 0.3, 0.5, 0.06), M.cabPaint);
-    deflector.position.set(0, 2.02, -0.68);
-    deflector.rotation.x = -0.34;
-    cab.add(deflector);
 
     this.markerLamps = [];
-    for (const x of [-0.82, -0.28, 0.28, 0.82]) {
-      const lamp = part(rbox(0.14, 0.06, 0.1, 0.02), M.amber, { cast: false });
-      lamp.position.set(x, 1.9, 0.98);
+    for (const x of [-0.84, -0.3, 0.3, 0.84]) {
+      const lamp = part(rbox(0.15, 0.06, 0.1, 0.02), M.amber, { cast: false });
+      lamp.position.set(x, 2.28, 1.92);
       cab.add(lamp);
       this.markerLamps.push(lamp);
     }
 
-    // Charge port where a diesel truck would carry its exhaust stack. ROVA runs
-    // electric refuse trucks, so there is no stack and nothing to emit.
+    // Charge port where a diesel would carry its stack.
     const portFlap = part(rbox(0.06, 0.34, 0.4, 0.03), M.cabPaint);
-    portFlap.position.set(-1.21, 0.62, -0.45);
+    portFlap.position.set(-(HW + 0.01), 0.86, 0.5);
     cab.add(portFlap);
     const portRing = part(new THREE.CylinderGeometry(0.1, 0.1, 0.05, 14), M.darkMetal);
     portRing.rotation.z = Math.PI / 2;
-    portRing.position.set(-1.25, 0.62, -0.45);
+    portRing.position.set(-(HW + 0.05), 0.86, 0.5);
     cab.add(portRing);
     const portGlow = part(new THREE.CylinderGeometry(0.05, 0.05, 0.06, 12), M.chargeLamp, { cast: false });
     portGlow.rotation.z = Math.PI / 2;
-    portGlow.position.set(-1.27, 0.62, -0.45);
+    portGlow.position.set(-(HW + 0.07), 0.86, 0.5);
     cab.add(portGlow);
     this.chargePortLamp = portGlow;
   }
 
   // --- Compactor body ------------------------------------------------------
+  // Also an extruded profile: the rear taper, roof crown and the twin rear
+  // wheel arches are cut into one surface.
   _buildContainer() {
     const M = this.mats;
-    const box = new THREE.Group();
-    box.position.set(0, 0.9, -1.1);
-    this.body.add(box);
+    const BODY_Z = -3.5;   // rear plane, world Z
+    const BODY_Y = 0.84;
+    const W = 2.44;
+    const HW = W / 2;
 
-    const W = 2.36, HW = W / 2;
-    const main = part(rbox(W, 2.0, 3.4, 0.09), M.bodyPaint);
-    main.position.set(0, 1.04, 0.35);
-    box.add(main);
+    const box = new THREE.Group();
+    box.position.set(0, BODY_Y, BODY_Z);
+    this.body.add(box);
+    this.containerGroup = box;
+    this.containerHalfWidth = HW;
+    this.bodyDims = { BODY_Z, BODY_Y, W };
+
+    // Profile: u forward from the rear plane, v up from the frame.
+    // Rear axles sit at world -2.74 and -1.44 -> u = 0.76 and 2.06.
+    // Arch sizing is derived, not eyeballed. At the body's lower edge (0.05
+    // above the frame) a 0.58 m tyre is 2*sqrt(0.58² - 0.31²) ≈ 0.98 wide, so
+    // the opening must exceed that; the radius also sets how far it arcs over
+    // the tyre's crown.
+    const archR = 0.6;
+    const p2 = new THREE.Shape();
+    p2.moveTo(0, 0.3);                         // rear, above the bumper
+    p2.lineTo(0, 0.05);
+    p2.lineTo(0.02, 0.05);
+    // Twin rear arches scalloped into the lower edge.
+    p2.lineTo(0.76 - archR, 0.05);
+    p2.absarc(0.76, 0.05, archR, Math.PI, 0, true);
+    p2.lineTo(2.06 - archR, 0.05);
+    p2.absarc(2.06, 0.05, archR, Math.PI, 0, true);
+    p2.lineTo(4.62, 0.05);                     // forward, toward the cab
+    p2.lineTo(4.62, 2.02);
+    p2.quadraticCurveTo(4.62, 2.2, 4.44, 2.22); // front roof radius
+    p2.lineTo(0.36, 2.22);                     // roof
+    p2.quadraticCurveTo(0.06, 2.22, 0.02, 1.98); // rear roof radius
+    p2.lineTo(0, 0.3);
+    p2.closePath();
+
+    const shell = part(extrudeProfile(p2, W), M.bodyPaint);
+    box.add(shell);
 
     for (const side of [-1, 1]) {
-      // Ribbed pressings on the rear half only — they must stand proud of the
-      // panel to catch light, so they sit just outside the body half-width.
+      const x = side * (HW + 0.005);
+
+      // Character line continued from the cab at the same height, which is
+      // what makes cab and body read as one vehicle instead of two objects.
+      const crease = part(rbox(0.05, 0.08, 4.3, 0.025), M.bodyPaintDark);
+      crease.position.set(x, 1.14, 2.4);
+      box.add(crease);
+
+      // Ribbed pressings above the crease, on the rear half only.
       for (let i = 0; i < 5; i++) {
-        const rib = part(rbox(0.07, 1.72, 0.1, 0.025), M.bodyPaintDark);
-        rib.position.set(side * (HW + 0.01), 1.04, -0.95 + i * 0.42);
+        const rib = part(rbox(0.06, 0.78, 0.11, 0.025), M.bodyPaintDark);
+        rib.position.set(x, 1.62, 0.72 + i * 0.44);
         box.add(rib);
       }
 
-      // Flat livery panel on the front half, slightly proud, with the decal
-      // sitting on its face so the artwork never fights the ribs.
-      const panel = part(rbox(0.05, 1.5, 1.9, 0.03), M.bodyPaint);
-      panel.position.set(side * (HW + 0.01), 1.1, 1.05);
+      // Livery panel on the front half, proud of the surface.
+      const panel = part(rbox(0.05, 1.4, 1.9, 0.04), M.bodyPaint);
+      panel.position.set(x, 1.5, 3.4);
       box.add(panel);
-      const decal = part(new THREE.PlaneGeometry(1.68, 0.66), M.decal, { cast: false, receive: false });
-      decal.position.set(side * (HW + 0.05), 1.16, 1.05);
+      const decal = part(new THREE.PlaneGeometry(1.7, 0.72), M.decal, { cast: false, receive: false });
+      decal.position.set(side * (HW + 0.045), 1.54, 3.4);
       decal.rotation.y = side * Math.PI / 2;
       box.add(decal);
 
-      // Top rail and lower skirt frame the flank.
-      const rail = part(rbox(0.12, 0.14, 3.4, 0.03), M.metal);
-      rail.position.set(side * HW, 2.0, 0.35);
+      // Top rail and a sill that follows the arches.
+      const rail = part(rbox(0.13, 0.15, 4.4, 0.035), M.metal);
+      rail.position.set(side * HW, 2.16, 2.3);
       box.add(rail);
-      const skirt = part(rbox(0.09, 0.36, 3.2, 0.03), M.bodyPaintDark);
-      skirt.position.set(side * HW, 0.14, 0.35);
-      box.add(skirt);
+      const sill = part(rbox(0.1, 0.2, 1.1, 0.03), M.bodyPaintDark);
+      sill.position.set(side * HW, 0.14, 3.9);
+      box.add(sill);
     }
 
-    // Slightly crowned roof.
-    const roof = part(rbox(2.26, 0.13, 3.24, 0.04), M.bodyPaintDark);
-    roof.position.set(0, 2.08, 0.35);
-    box.add(roof);
+    // Arch liners. The extrusion cuts each arch clean through the body, so
+    // without an inner surface you see daylight through the wheel wells.
+    for (const u of [0.76, 2.06]) {
+      const linerGeo = new THREE.CylinderGeometry(archR, archR, W - 0.03, 18, 1, true, 0, Math.PI);
+      linerGeo.rotateZ(Math.PI / 2);   // axis across the vehicle, open side down
+      const liner = part(linerGeo, M.arch, { cast: false });
+      liner.material.side = THREE.DoubleSide;
+      liner.position.set(0, 0.05, u);
+      box.add(liner);
+    }
 
-    // Rear hopper and tailgate.
-    const hopper = part(rbox(2.3, 1.76, 0.95, 0.08), M.bodyPaintDark);
-    hopper.position.set(0, 0.9, -1.72);
-    hopper.rotation.x = -0.07;
+    // Rear hopper: sloped loading section, then the tailgate.
+    const hopper = part(rbox(2.36, 1.8, 0.9, 0.09), M.bodyPaintDark);
+    hopper.position.set(0, 1.0, 0.52);
+    hopper.rotation.x = 0.06;
     box.add(hopper);
-
-    const tailgate = part(rbox(2.04, 1.3, 0.14, 0.04), M.bodyPaint);
-    tailgate.position.set(0, 0.98, -2.2);
+    const tailgate = part(rbox(2.1, 1.36, 0.16, 0.05), M.bodyPaint);
+    tailgate.position.set(0, 1.1, 0.04);
     box.add(tailgate);
 
-    // Tailgate rams — chrome rods against dark paint read as working hydraulics.
+    // Tailgate rams.
     for (const side of [-1, 1]) {
-      const barrel = part(new THREE.CylinderGeometry(0.075, 0.075, 0.74, 12), M.darkMetal);
-      barrel.rotation.x = 0.5;
-      barrel.position.set(side * 0.94, 1.68, -1.62);
+      const barrel = part(new THREE.CylinderGeometry(0.075, 0.075, 0.76, 12), M.darkMetal);
+      barrel.rotation.x = -0.5;
+      barrel.position.set(side * 0.96, 1.8, 0.62);
       box.add(barrel);
-      const rod = part(new THREE.CylinderGeometry(0.038, 0.038, 0.68, 10), M.hydraulic);
-      rod.rotation.x = 0.5;
-      rod.position.set(side * 0.94, 1.4, -1.95);
+      const rod = part(new THREE.CylinderGeometry(0.038, 0.038, 0.7, 10), M.hydraulic);
+      rod.rotation.x = -0.5;
+      rod.position.set(side * 0.96, 1.52, 0.28);
       box.add(rod);
     }
 
-    const chevrons = part(new THREE.PlaneGeometry(1.94, 0.42), M.chevron, { cast: false });
-    chevrons.position.set(0, 0.42, -2.29);
+    const chevrons = part(new THREE.PlaneGeometry(2.0, 0.44), M.chevron, { cast: false });
+    chevrons.position.set(0, 0.5, -0.05);
     box.add(chevrons);
-    const rearBumper = part(rbox(2.16, 0.22, 0.24, 0.05), M.bumper);
-    rearBumper.position.set(0, 0.04, -2.3);
+    const rearBumper = part(rbox(2.2, 0.24, 0.26, 0.06), M.bumper);
+    rearBumper.position.set(0, 0.12, -0.06);
     box.add(rearBumper);
-
-    this.containerGroup = box;
-    this.containerHalfWidth = HW;
+    // Underrun bar, as required on a real refuse truck.
+    for (const side of [-1, 1]) {
+      const stay = part(rbox(0.12, 0.4, 0.12, 0.03), M.darkMetal);
+      stay.position.set(side * 0.8, -0.1, 0.12);
+      box.add(stay);
+    }
   }
 
   // --- Side-loading arm ----------------------------------------------------
@@ -633,82 +789,118 @@ export class Truck {
   _buildLights() {
     const M = this.mats;
     const cab = this.cab;
+    const HW = this.cabDims.CAB_W / 2;
 
-    // Front clusters sit in the bumper line, as on a modern cab-over.
+    // Front clusters recessed into the fascia beside the bumper.
     this.headlampLenses = [];
+    this.frontIndicators = [];
     for (const side of [-1, 1]) {
-      const housing = part(rbox(0.46, 0.3, 0.14, 0.04), M.trim);
-      housing.position.set(side * 0.88, 0.14, 1.0);
+      const housing = part(rbox(0.5, 0.34, 0.16, 0.05), M.trim);
+      housing.position.set(side * 0.86, 0.62, 2.24);
       cab.add(housing);
-      const lens = part(rbox(0.4, 0.24, 0.06, 0.03), M.headlight, { cast: false });
-      lens.position.set(side * 0.88, 0.14, 1.07);
+      const lens = part(rbox(0.42, 0.26, 0.07, 0.03), M.headlight, { cast: false });
+      lens.position.set(side * 0.86, 0.62, 2.32);
       cab.add(lens);
       this.headlampLenses.push(lens);
 
-      // Daytime running strip under each lamp.
-      const drl = part(rbox(0.38, 0.05, 0.05, 0.02), M.amber, { cast: false });
-      drl.position.set(side * 0.88, -0.06, 1.09);
+      // Separate indicator lens beside each headlamp.
+      const ind = part(rbox(0.16, 0.2, 0.06, 0.025), M.indicator.clone(), { cast: false });
+      ind.position.set(side * 1.12, 0.62, 2.28);
+      cab.add(ind);
+      this.frontIndicators.push({ mesh: ind, side });
+
+      // DRL strip along the top of the cluster.
+      const drl = part(rbox(0.4, 0.05, 0.05, 0.02), M.drl, { cast: false });
+      drl.position.set(side * 0.86, 0.79, 2.33);
       cab.add(drl);
     }
 
-    // Rear cluster on the tailgate face (tailgate front is at local z ≈ -2.27).
-    const REAR_Z = -2.3;
-    this.brakeLenses = [];
+    // Side repeaters on the cab flanks.
+    this.sideIndicators = [];
     for (const side of [-1, 1]) {
-      const housing = part(rbox(0.22, 0.66, 0.1, 0.03), M.trim);
-      housing.position.set(side * 0.88, 0.98, REAR_Z);
+      const rep = part(rbox(0.05, 0.09, 0.22, 0.02), M.indicator.clone(), { cast: false });
+      rep.position.set(side * (HW + 0.02), 1.16, 0.36);
+      cab.add(rep);
+      this.sideIndicators.push({ mesh: rep, side });
+    }
+
+    // Rear cluster on the tailgate (tailgate face sits at body-local z ≈ -0.04).
+    const REAR_Z = -0.06;
+    this.brakeLenses = [];
+    this.rearIndicators = [];
+    for (const side of [-1, 1]) {
+      const housing = part(rbox(0.24, 0.8, 0.12, 0.04), M.trim);
+      housing.position.set(side * 0.9, 1.12, REAR_Z);
       this.containerGroup.add(housing);
 
-      const brake = part(rbox(0.16, 0.22, 0.05, 0.02), M.tail, { cast: false });
-      brake.position.set(side * 0.88, 1.18, REAR_Z - 0.06);
+      const brake = part(rbox(0.17, 0.24, 0.06, 0.025), M.tail, { cast: false });
+      brake.position.set(side * 0.9, 1.38, REAR_Z - 0.07);
       this.containerGroup.add(brake);
       this.brakeLenses.push(brake);
 
-      const indicator = part(rbox(0.16, 0.15, 0.05, 0.02), M.amber, { cast: false });
-      indicator.position.set(side * 0.88, 0.96, REAR_Z - 0.06);
-      this.containerGroup.add(indicator);
+      const ind = part(rbox(0.17, 0.17, 0.06, 0.025), M.indicator.clone(), { cast: false });
+      ind.position.set(side * 0.9, 1.12, REAR_Z - 0.07);
+      this.containerGroup.add(ind);
+      this.rearIndicators.push({ mesh: ind, side });
 
-      const rev = part(rbox(0.16, 0.15, 0.05, 0.02), M.reverse, { cast: false });
-      rev.position.set(side * 0.88, 0.77, REAR_Z - 0.06);
+      const rev = part(rbox(0.17, 0.17, 0.06, 0.025), M.reverse, { cast: false });
+      rev.position.set(side * 0.9, 0.88, REAR_Z - 0.07);
       this.containerGroup.add(rev);
     }
 
     // Amber beacon bar across the cab roof.
     this.beacons = [];
+    const beaconBar = part(rbox(1.6, 0.08, 0.18, 0.03), M.darkMetal);
+    beaconBar.position.set(0, 2.28, 0.9);
+    cab.add(beaconBar);
     for (const side of [-1, 1]) {
-      const beacon = part(new THREE.CylinderGeometry(0.08, 0.09, 0.15, 12), M.amber.clone(), { cast: false });
-      beacon.position.set(side * 0.62, 1.99, 0.1);
+      const beacon = part(new THREE.CylinderGeometry(0.08, 0.09, 0.16, 12), M.amber.clone(), { cast: false });
+      beacon.position.set(side * 0.64, 2.38, 0.9);
       cab.add(beacon);
       this.beacons.push(beacon);
     }
-    const beaconBar = part(rbox(1.5, 0.07, 0.16, 0.03), M.darkMetal);
-    beaconBar.position.set(0, 1.93, 0.1);
-    cab.add(beaconBar);
-
     this.beaconLight = new THREE.PointLight(0xffa71a, 0, 8, 2);
-    this.beaconLight.position.set(0, 3.0, 2.4);
+    this.beaconLight.position.set(0, 3.3, 2.3);
     this.body.add(this.beaconLight);
 
-    // Headlight beams, switched on in night worlds.
+    // --- Beams -------------------------------------------------------------
+    // Headlamps are real spotlights that light the road. They are switchable in
+    // every world, not just at night, and dipped/main beam differ in reach.
     this.headlights = [];
     for (const side of [-1, 1]) {
-      const spot = new THREE.SpotLight(0xfff2c9, 0, 26, Math.PI / 5.5, 0.45, 1.1);
-      spot.position.set(side * 0.85, 1.05, 3.4);
+      const spot = new THREE.SpotLight(0xfff2c9, 0, 30, Math.PI / 5.5, 0.45, 1.1);
+      spot.position.set(side * 0.86, 1.44, 3.4);
       const target = new THREE.Object3D();
-      target.position.set(side * 0.95, 0, 16);
+      target.position.set(side * 0.98, 0, 16);
       this.group.add(target);
       spot.target = target;
       this.group.add(spot);
-      this.headlights.push(spot);
+      this.headlights.push({ spot, target });
     }
+
+    // Reversing lamps throw a short pool of light behind the truck.
+    this.reverseLight = new THREE.SpotLight(0xffffff, 0, 12, Math.PI / 4, 0.6, 1.2);
+    this.reverseLight.position.set(0, 1.2, -3.4);
+    const revTarget = new THREE.Object3D();
+    revTarget.position.set(0, 0, -9);
+    this.group.add(revTarget);
+    this.reverseLight.target = revTarget;
+    this.group.add(this.reverseLight);
   }
 
   // --- Public API ----------------------------------------------------------
 
+  /** Turns the headlamps on/off. Works in every world, not just at night. */
   setHeadlights(on) {
-    this.headlights.forEach((s) => { s.intensity = on ? 90 : 0; });
-    this.mats.headlight.emissiveIntensity = on ? 2.2 : 0.85;
-    this.nightMode = on;
+    this.lightsOn = !!on;
+    this.headlights.forEach(({ spot }) => { spot.intensity = on ? 110 : 0; });
+    this.mats.headlight.emissiveIntensity = on ? 2.4 : 0.7;
+    this.mats.drl.emissiveIntensity = on ? 2.0 : 1.2;
+  }
+
+  toggleHeadlights() {
+    this.setHeadlights(!this.lightsOn);
+    return this.lightsOn;
   }
 
   teleport(position, heading = 0) {
@@ -804,25 +996,52 @@ export class Truck {
   }
 
   _updateLights(delta, throttle, braking) {
-    // Brake lamps: full glow under braking, dim tail glow otherwise.
+    const M = this.mats;
+
+    // Brake lamps: full glow while slowing under command, dim tail glow otherwise.
     const decelerating = braking || (throttle < 0 && this.speed > 0.1);
-    this.mats.tail.emissiveIntensity = THREE.MathUtils.lerp(
-      this.mats.tail.emissiveIntensity, decelerating ? 2.6 : 0.5, 0.25,
+    M.tail.emissiveIntensity = THREE.MathUtils.lerp(
+      M.tail.emissiveIntensity, decelerating ? 2.8 : 0.5, 0.25,
     );
 
-    // Reverse lamps only when actually rolling backwards.
-    this.mats.reverse.emissiveIntensity = THREE.MathUtils.lerp(
-      this.mats.reverse.emissiveIntensity, this.speed < -0.15 ? 2.0 : 0.0, 0.2,
+    // Reversing lamps plus a real pool of light behind the truck.
+    const reversing = this.speed < -0.15;
+    M.reverse.emissiveIntensity = THREE.MathUtils.lerp(
+      M.reverse.emissiveIntensity, reversing ? 2.2 : 0.0, 0.2,
+    );
+    this.reverseLight.intensity = THREE.MathUtils.lerp(
+      this.reverseLight.intensity, reversing ? 18 : 0, 0.2,
     );
 
-    // Rotating beacons: two lamps pulsing out of phase reads as a rotating
-    // strobe without needing a real rotating light.
+    // Indicators blink at ~1.5 Hz on whichever side you are steering toward,
+    // and only the lamps on that side light.
+    const steering = Math.abs(this.steerAngle) > this.maxSteer * 0.12
+      ? Math.sign(this.steerAngle) : 0;
+    // steerAngle is positive when steering left, and +X is the truck's left.
+    const activeSide = steering;
+    const blinkOn = steering !== 0 && (this._elapsed % 0.68) < 0.36;
+    const setInd = ({ mesh, side }) => {
+      const lit = blinkOn && side === activeSide;
+      mesh.material.emissiveIntensity = THREE.MathUtils.lerp(
+        mesh.material.emissiveIntensity, lit ? 3.0 : 0.12, 0.45,
+      );
+    };
+    this.frontIndicators.forEach(setInd);
+    this.rearIndicators.forEach(setInd);
+    this.sideIndicators.forEach(setInd);
+
+    // Rotating beacons: two lamps pulsing out of phase read as a strobe.
     const t = this._elapsed * 5;
     this.beacons.forEach((b, i) => {
       const phase = Math.sin(t + i * Math.PI);
       b.material.emissiveIntensity = 0.35 + Math.max(0, phase) * 2.4;
     });
     this.beaconLight.intensity = 6 + Math.max(0, Math.sin(t)) * 12;
+
+    // Charge port pulses slowly, like a vehicle sitting at a charger.
+    if (this.chargePortLamp) {
+      this.chargePortLamp.material.emissiveIntensity = 1.0 + Math.sin(this._elapsed * 1.6) * 0.6;
+    }
 
     // The arm idles with a slow hydraulic breathing motion.
     if (this.armBoom) {

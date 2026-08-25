@@ -57,7 +57,7 @@ export class Game {
     this.camera = new THREE.PerspectiveCamera(58, window.innerWidth / window.innerHeight, 0.1, 600);
 
     this.clock = new THREE.Clock();
-    this.input = new InputController();
+    this.input = new InputController(canvas);
     this.input.lock(); // locked until the player presses Start Engine
     this.chaseCam = new ChaseCamera(this.camera);
     this.fade = new FadeTransition(document.getElementById('fade-overlay'));
@@ -233,7 +233,18 @@ export class Game {
     const elapsed = this.clock.elapsedTime;
 
     this.truck.update(delta, this.input, this.currentBounds);
-    this.chaseCam.update(delta, this.truck);
+    // Mouse orbit, then recentre only once the player has let go for a moment.
+    this.chaseCam.applyPointer(this.input.consumeCameraInput());
+    const idleMs = performance.now() - this.input.lastPointerAt;
+    this.chaseCam.update(delta, this.truck, {
+      recenter: !this.input.dragging && idleMs > 1800,
+    });
+
+    if (this.input.consumeLightToggle()) {
+      const on = this.truck.toggleHeadlights();
+      this.hud.flashLights(on);
+    }
+
     this.truckFX.update(delta, this.truck);
     this.hud.setSpeed(this.truck.forwardSpeedKmh);
     this.miniMap.update(this.truck, this.portals);

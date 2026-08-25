@@ -20,4 +20,18 @@ export class HUD {
   setSpeed(kmh) {
     this.speedValueEl.textContent = Math.round(kmh);
   }
+
+  /** Brief on-screen confirmation when the headlamps are toggled. */
+  flashLights(on) {
+    if (!this._lightsEl) {
+      this._lightsEl = document.createElement('div');
+      this._lightsEl.id = 'lights-toast';
+      this.root.appendChild(this._lightsEl);
+    }
+    this._lightsEl.textContent = on ? '💡 Headlights ON' : '🌑 Headlights OFF';
+    this._lightsEl.classList.remove('show');
+    // Restart the CSS animation rather than letting it no-op on a re-add.
+    void this._lightsEl.offsetWidth;
+    this._lightsEl.classList.add('show');
+  }
 }

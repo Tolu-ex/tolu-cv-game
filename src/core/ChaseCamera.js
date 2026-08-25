@@ -12,6 +12,8 @@ export class ChaseCamera {
   constructor(camera, {
     distance = 12, height = 5.2, lookHeight = 1.6, stiffness = 4.5,
     baseFov = 58, maxFovBoost = 9, swing = 2.4,
+    minDistance = 5, maxDistance = 26,
+    orbitSensitivity = 0.005, zoomSensitivity = 0.012,
   } = {}) {
     this.camera = camera;
     this.distance = distance;
@@ -27,12 +29,29 @@ export class ChaseCamera {
     this._currentLookAt = new THREE.Vector3();
     this._swingAmount = 0;
     this._shake = 0;
+
+    // --- Roblox-style free look ---
+    this.minDistance = minDistance;
+    this.maxDistance = maxDistance;
+    this.orbitSensitivity = orbitSensitivity;
+    this.zoomSensitivity = zoomSensitivity;
+    this.baseDistance = distance;
+    // Offsets from the default behind-the-truck pose, not absolute angles, so
+    // the camera still follows the truck's heading while you look around.
+    this.yawOffset = 0;
+    this.pitchOffset = 0;
+    this.minPitch = -0.35;   // just below level
+    this.maxPitch = 1.15;    // near top-down
   }
 
   /** Instantly snap behind the target — used right after a world transition. */
   snapTo(target) {
     this._swingAmount = 0;
     this._shake = 0;
+    // Reset the look angles so you always spawn facing forward, but keep the
+    // player's chosen zoom — that is a preference, not per-world framing.
+    this.yawOffset = 0;
+    this.pitchOffset = 0;
     this.camera.fov = this.baseFov;
     this.camera.updateProjectionMatrix();
     this._computeDesired(target);
@@ -44,19 +63,56 @@ export class ChaseCamera {
   _computeDesired(target) {
     // Lateral offset opposite the turn, so the camera looks into the corner.
     const lateral = this._swingAmount * this.swing;
-    const back = -this.distance;
-    const cos = Math.cos(target.heading);
-    const sin = Math.sin(target.heading);
+
+    // Camera sits on a sphere around the truck. Yaw is the truck's heading plus
+    // whatever the player has dragged; pitch raises or lowers the eye.
+    const yaw = target.heading + this.yawOffset;
+    const basePitch = Math.atan2(this.height, this.distance);
+    const pitch = THREE.MathUtils.clamp(basePitch + this.pitchOffset, this.minPitch, this.maxPitch);
+
+    const horiz = Math.cos(pitch) * this.distance;
+    const vert = Math.sin(pitch) * this.distance;
+    const cos = Math.cos(yaw);
+    const sin = Math.sin(yaw);
 
     this._desiredPos.set(
-      target.position.x + sin * back + cos * lateral,
-      target.position.y + this.height,
-      target.position.z + cos * back - sin * lateral,
+      target.position.x - sin * horiz + cos * lateral,
+      target.position.y + Math.max(0.6, vert),
+      target.position.z - cos * horiz - sin * lateral,
     );
   }
 
-  update(delta, target) {
+  /** Applies one frame of mouse orbit/zoom input. */
+  applyPointer({ dx = 0, dy = 0, zoom = 0 }) {
+    if (dx) this.yawOffset -= dx * this.orbitSensitivity;
+    if (dy) {
+      // Subtract, so dragging up raises the camera over the truck — the same
+      // direction as OrbitControls and most orbit viewers.
+      this.pitchOffset = THREE.MathUtils.clamp(
+        this.pitchOffset - dy * this.orbitSensitivity, -1.0, 1.0,
+      );
+    }
+    if (zoom) {
+      this.distance = THREE.MathUtils.clamp(
+        this.distance + zoom * this.zoomSensitivity,
+        this.minDistance, this.maxDistance,
+      );
+    }
+    // Keep yaw in range so it never accumulates into large-float territory.
+    this.yawOffset = Math.atan2(Math.sin(this.yawOffset), Math.cos(this.yawOffset));
+  }
+
+  update(delta, target, { recenter = false } = {}) {
     const speedFrac = THREE.MathUtils.clamp(Math.abs(target.speed) / target.maxSpeed, 0, 1);
+
+    // Gentle drift back behind the truck once you are driving and have let go
+    // of the mouse. Slow enough not to fight the player, but it keeps you
+    // oriented instead of stranded looking sideways at speed.
+    if (recenter && speedFrac > 0.25) {
+      const pull = 1 - Math.pow(0.55, delta);
+      this.yawOffset = THREE.MathUtils.lerp(this.yawOffset, 0, pull);
+      this.pitchOffset = THREE.MathUtils.lerp(this.pitchOffset, 0, pull);
+    }
 
     // Swing trails the steering input rather than snapping to it.
     const steerFrac = (target.steerAngle / target.maxSteer) * speedFrac;
