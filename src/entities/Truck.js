@@ -409,20 +409,15 @@ export class Truck {
     // biggest reason the old shape read wrong.
     p2.lineTo(4.85, 2.46);
     p2.quadraticCurveTo(4.85, 2.64, 4.64, 2.66); // front roof radius
-    p2.lineTo(1.86, 2.66);                     // roof ends short of the tail
-    // The tail hood: a wedge sloping down and back. This single line is what
-    // makes a rear loader recognisable — every reference shares it, and a
-    // square back reads as a shipping container no matter how much detail is
-    // added to it.
-    p2.lineTo(0.30, 1.94);
-    p2.lineTo(0.08, 1.60);                     // short rear face
-    // Hopper notch cut into the profile, so the cavity is a genuine void in
-    // the shell rather than a dark box placed in front of a solid wall.
-    p2.lineTo(0.95, 1.52);                     // cavity roof, angled
-    p2.lineTo(0.95, 0.34);                     // cavity back wall
-    p2.lineTo(0.06, 0.22);                     // back out below the opening
-    p2.lineTo(0, 0.3);
+    p2.lineTo(0.36, 2.66);                     // roof runs to the back
+    p2.quadraticCurveTo(0.06, 2.66, 0.02, 2.4);
+    p2.lineTo(0, 0.3);                         // clean vertical rear face
     p2.closePath();
+    // The hopper is NOT cut into this shell. On a real rear loader the tail is
+    // a separate unit bolted to the back — wider than the body, crown above
+    // the roofline, overhanging behind the axle. Building it as a notch in the
+    // body forces it to share the body's width and height, which is exactly
+    // why it kept reading as a box with a hole rather than a tail.
 
     const shell = part(extrudeProfile(p2, W), M.bodyPaint);
     box.add(shell);
@@ -481,165 +476,148 @@ export class Truck {
       box.add(liner);
     }
 
-    // --- Rear hopper -------------------------------------------------------
-    // Behind a chase camera the player looks at this face almost the entire
-    // time, and on a real refuse truck it is the most characteristic part of
-    // the vehicle: a deep recessed scoop with the packer visible inside,
-    // framed by hydraulic rams and conspicuity striping. It used to be a flat
-    // slab, which read as a shipping container rather than a truck.
-    const RZ = 0.06;          // outer face of the tailgate
-    const OPEN_HW = 0.97;     // half-width — the mouth dominates the tail
-    const OPEN_LO = 0.26;     // opening drops nearly to the bumper
-    const OPEN_HI = 1.58;     // opening, top edge (under the tail slope)
-    const DEPTH = 0.90;       // how far the hopper recedes into the body
+    this._buildTail(box, W, HW);
+  }
 
-    // The notch spans the full width, so without these it would open straight
-    // out of both flanks. Filling the outer thirds leaves the hopper mouth.
+
+  /**
+   * The tail unit.
+   *
+   * Built as its own extruded volume rather than as part of the body shell,
+   * because on a real rear loader it is a separate unit: wider than the
+   * compactor body, its crown standing above the roofline, overhanging behind
+   * the rear axle. Sharing the body's profile forces it to share the body's
+   * width and height, and no amount of bolted-on hardware rescues that.
+   */
+  _buildTail(box, W, HW) {
+    const M = this.mats;
+    const TW = W * 1.07;          // the tail flares wider than the body
+    const THW = TW / 2;
+    const LEN = 1.5;              // overhang behind the body's rear face
+    const MOUTH_HW = 1.0;         // half-width of the hopper mouth
+    const REAR = -LEN;            // rear plane, tail-local
+
+    const tail = new THREE.Group();
+    tail.position.set(0, 0, 0);   // body-local; the body's rear face is z = 0
+    box.add(tail);
+    this.tailGroup = tail;
+
+    // Side profile. +u is forward, so the tail runs from REAR up to 0.
+    const t = new THREE.Shape();
+    t.moveTo(0, 0.10);
+    t.lineTo(REAR + 0.16, 0.10);      // underside
+    t.lineTo(REAR, 0.26);             // spill lip, kicked up at the tip
+    t.lineTo(REAR, 0.66);
+    // Hopper mouth: a scoop you see down into, its floor sweeping up-forward.
+    t.lineTo(REAR + 0.92, 0.86);      // cavity floor
+    t.lineTo(REAR + 0.92, 1.74);      // cavity forward wall
+    t.lineTo(REAR + 0.05, 1.92);      // back out to the rear, top of the mouth
+    t.lineTo(REAR + 0.26, 2.42);      // rear upper face, raked
+    t.lineTo(REAR + 1.12, 2.98);      // sweep up to the crown, ABOVE the roof
+    t.lineTo(0, 2.98);
+    t.lineTo(0, 0.10);
+    t.closePath();
+
+    const shell = part(extrudeProfile(t, TW), M.bodyPaint);
+    tail.add(shell);
+
+    // The mouth spans the full width of the extrusion, so close the outer
+    // thirds; what is left is the opening.
     for (const side of [-1, 1]) {
-      const filler = part(rbox(HW - OPEN_HW, OPEN_HI - OPEN_LO + 0.3, DEPTH + 0.1, 0.03), M.bodyPaint);
-      filler.position.set(side * (HW + OPEN_HW) / 2, (OPEN_LO + OPEN_HI) / 2, RZ + DEPTH / 2);
-      box.add(filler);
-      // Dark inner cheek, so the mouth reads as a recess. With flat shading
-      // there is no shadow to imply depth — only value does that work.
-      const cheek = part(rbox(0.06, OPEN_HI - OPEN_LO, DEPTH, 0.02), M.hopperDark, { cast: false });
-      cheek.position.set(side * (OPEN_HW - 0.03), (OPEN_LO + OPEN_HI) / 2, RZ + DEPTH / 2);
-      box.add(cheek);
+      const filler = part(rbox(THW - MOUTH_HW, 1.5, 1.1, 0.04), M.bodyPaint);
+      filler.position.set(side * (THW + MOUTH_HW) / 2, 1.28, REAR + 0.5);
+      tail.add(filler);
+      // Dark inner cheek. Flat shading casts no shadow, so the recess has to
+      // be carried by value alone.
+      const cheek = part(rbox(0.06, 1.05, 0.95, 0.02), M.hopperDark, { cast: false });
+      cheek.position.set(side * (MOUTH_HW - 0.03), 1.3, REAR + 0.5);
+      tail.add(cheek);
     }
-    // Darken the notch's back and roof, which the shell renders in body colour.
-    const backFace = part(rbox(OPEN_HW * 2, OPEN_HI - OPEN_LO, 0.06, 0.02), M.hopperDark, { cast: false });
-    backFace.position.set(0, (OPEN_LO + OPEN_HI) / 2, RZ + DEPTH - 0.04);
-    box.add(backFace);
-    const roofFace = part(rbox(OPEN_HW * 2, 0.06, DEPTH, 0.02), M.hopperDark, { cast: false });
-    roofFace.position.set(0, OPEN_HI - 0.02, RZ + DEPTH / 2);
-    box.add(roofFace);
+    // Darken the scoop interior.
+    const throat = part(rbox(MOUTH_HW * 2, 0.9, 0.06, 0.02), M.hopperDark, { cast: false });
+    throat.position.set(0, 1.3, REAR + 0.9);
+    tail.add(throat);
+    const floor = part(rbox(MOUTH_HW * 2, 0.1, 1.0, 0.03), M.hopperFloor, { cast: false });
+    floor.position.set(0, 0.82, REAR + 0.52);
+    floor.rotation.x = -0.28;
+    tail.add(floor);
+    const roofIn = part(rbox(MOUTH_HW * 2, 0.08, 0.9, 0.02), M.hopperDark, { cast: false });
+    roofIn.position.set(0, 1.82, REAR + 0.5);
+    tail.add(roofIn);
 
-    // Scoop floor: slopes up and inward, the surface waste is raked along.
-    const scoop = part(rbox(OPEN_HW * 2, 0.12, DEPTH * 1.15, 0.03), M.hopperFloor, { cast: false });
-    scoop.position.set(0, OPEN_LO + 0.20, RZ + DEPTH * 0.55);
-    scoop.rotation.x = -0.36;
-    box.add(scoop);
+    // Packer blade, angled across the throat.
+    const blade = part(rbox(MOUTH_HW * 1.8, 0.46, 0.12, 0.03), M.metal, { cast: false });
+    blade.position.set(0, 1.5, REAR + 0.72);
+    blade.rotation.x = 0.42;
+    tail.add(blade);
 
-    // Packer blade angled across the mouth, with its rams.
-    const blade = part(rbox(OPEN_HW * 1.86, 0.5, 0.14, 0.03), M.metal, { cast: false });
-    blade.position.set(0, OPEN_HI - 0.42, RZ + DEPTH * 0.72);
-    blade.rotation.x = 0.5;
-    box.add(blade);
+    // --- Lift rams: long, angled, outside. The strongest read on the tail
+    // after the silhouette itself, and previously just stubs.
     for (const side of [-1, 1]) {
-      const packRam = part(new THREE.CylinderGeometry(0.05, 0.05, 0.72, 10), M.hydraulic, { cast: false });
-      packRam.rotation.x = 0.62;
-      packRam.position.set(side * 0.5, OPEN_HI - 0.3, RZ + DEPTH * 0.5);
-      box.add(packRam);
-    }
-
-    // --- Tailgate frame around the opening ---
-    for (const side of [-1, 1]) {
-      const hinge = part(new THREE.CylinderGeometry(0.07, 0.07, OPEN_HI - OPEN_LO + 0.3, 10), M.darkMetal);
-      hinge.position.set(side * (HW - 0.07), (OPEN_LO + OPEN_HI) / 2, RZ + 0.06);
-      box.add(hinge);
-    }
-    // Sill below the opening, angled like the real lip.
-    const sill = part(rbox(W, 0.2, 0.26, 0.04), M.bodyPaint);
-    sill.position.set(0, OPEN_LO - 0.09, RZ + 0.02);
-    sill.rotation.x = 0.16;
-    box.add(sill);
-
-    // Tailgate lift rams, outside the frame at the top corners.
-    for (const side of [-1, 1]) {
-      const barrel = part(new THREE.CylinderGeometry(0.075, 0.075, 0.8, 12), M.darkMetal);
-      barrel.rotation.x = -0.52;
-      barrel.position.set(side * 1.06, 2.06, 0.82);
-      box.add(barrel);
-      const rod = part(new THREE.CylinderGeometry(0.038, 0.038, 0.74, 10), M.hydraulic);
-      rod.rotation.x = -0.52;
-      rod.position.set(side * 1.06, 1.78, 0.48);
-      box.add(rod);
-    }
-
-    // Conspicuity striping above and below the opening, as the reference has.
-    // Striping sits on the sloped hood and along the sill, angled to match.
-    for (let i = 0; i < 11; i++) {
-      const hood = part(rbox(0.19, 0.11, 0.05, 0.015),
-        i % 2 === 0 ? M.stripeRed : M.stripeWhite, { cast: false });
-      hood.position.set(-1.05 + i * 0.21, 1.82, RZ + 0.16);
-      hood.rotation.x = -0.42;                 // lie flat on the slope
-      box.add(hood);
-      const sillStripe = part(rbox(0.19, 0.11, 0.05, 0.015),
-        i % 2 === 0 ? M.stripeRed : M.stripeWhite, { cast: false });
-      sillStripe.position.set(-1.05 + i * 0.21, OPEN_LO - 0.09, RZ - 0.08);
-      box.add(sillStripe);
-    }
-
-    // --- Tail hardware ------------------------------------------------------
-    // Rear loaders carry their packer gear on the OUTSIDE of the tail, and it
-    // is most of what you actually see: big rams up the corners, a control
-    // station, ladder rungs, hinges and placards. Without it the tail is just
-    // a painted panel.
-    for (const side of [-1, 1]) {
-      // Packer ram running up the outer corner, barrel over bright rod.
-      const ramBody = part(new THREE.CylinderGeometry(0.085, 0.085, 0.86, 10), M.darkMetal);
-      ramBody.position.set(side * 1.12, 1.28, RZ - 0.14);
-      box.add(ramBody);
-      const ramRod2 = part(new THREE.CylinderGeometry(0.045, 0.045, 0.58, 8), M.hydraulic);
-      ramRod2.position.set(side * 1.12, 0.72, RZ - 0.14);
-      box.add(ramRod2);
-      // Pivot lugs top and bottom.
-      for (const y of [1.74, 0.42]) {
-        const lug = part(rbox(0.16, 0.16, 0.16, 0.03), M.metal);
-        lug.position.set(side * 1.12, y, RZ - 0.14);
-        box.add(lug);
+      const barrel = part(new THREE.CylinderGeometry(0.085, 0.085, 1.15, 10), M.darkMetal);
+      barrel.rotation.x = -0.62;
+      barrel.position.set(side * (THW - 0.06), 2.05, 0.42);
+      tail.add(barrel);
+      const rod = part(new THREE.CylinderGeometry(0.048, 0.048, 1.0, 8), M.hydraulic);
+      rod.rotation.x = -0.62;
+      rod.position.set(side * (THW - 0.06), 1.42, REAR + 0.72);
+      tail.add(rod);
+      // Pivot lugs at each end.
+      for (const [y, z] of [[2.5, 0.75], [1.12, REAR + 0.5]]) {
+        const lug = part(rbox(0.16, 0.18, 0.18, 0.03), M.metal);
+        lug.position.set(side * (THW - 0.06), y, z);
+        tail.add(lug);
       }
-      // Hydraulic hose run down the corner.
-      const hose = part(new THREE.CylinderGeometry(0.028, 0.028, 1.1, 6), M.trim);
-      hose.position.set(side * 1.19, 1.1, RZ - 0.02);
-      hose.rotation.z = 0.06;
-      box.add(hose);
     }
 
-    // Control station on the kerb side, where the loader stands.
-    const panelBox = part(rbox(0.16, 0.42, 0.3, 0.03), M.darkMetal);
-    panelBox.position.set(-1.2, 1.12, RZ + 0.22);
-    box.add(panelBox);
-    const panelFace = part(rbox(0.05, 0.3, 0.22, 0.02), M.armPaint, { cast: false });
-    panelFace.position.set(-1.31, 1.12, RZ + 0.22);
-    box.add(panelFace);
+    // Spill lip projecting back under the mouth.
+    const lip = part(rbox(MOUTH_HW * 2.1, 0.08, 0.34, 0.03), M.metal);
+    lip.position.set(0, 0.3, REAR - 0.12);
+    lip.rotation.x = 0.22;
+    tail.add(lip);
 
-    // Ladder rungs up the opposite corner.
-    for (const y of [0.44, 0.78, 1.12, 1.46]) {
-      const rung = part(rbox(0.26, 0.05, 0.07, 0.02), M.metal);
-      rung.position.set(1.06, y, RZ - 0.24);
-      box.add(rung);
-    }
-    const grabRail = part(new THREE.CylinderGeometry(0.03, 0.03, 1.2, 8), M.chrome);
-    grabRail.position.set(1.2, 1.0, RZ - 0.12);
-    box.add(grabRail);
-
-    // Placards on the sloped hood.
-    for (const x of [-0.5, -0.1, 0.3]) {
-      const plac = part(rbox(0.26, 0.14, 0.03, 0.01), M.trim, { cast: false });
-      plac.position.set(x, 2.02, RZ + 0.3);
-      plac.rotation.x = -0.42;
-      box.add(plac);
-    }
-    // Hinge plates where the tailgate swings.
+    // Diagonal hazard striping on the rear corners, as the references carry.
     for (const side of [-1, 1]) {
-      const plate = part(rbox(0.2, 0.26, 0.12, 0.02), M.darkMetal);
-      plate.position.set(side * 1.0, 1.86, RZ + 0.24);
-      plate.rotation.x = -0.42;
-      box.add(plate);
+      for (let i = 0; i < 4; i++) {
+        const seg = part(rbox(0.3, 0.13, 0.05, 0.015),
+          i % 2 === 0 ? M.stripeRed : M.stripeWhite, { cast: false });
+        seg.position.set(side * (THW - 0.18), 0.5 + i * 0.17, REAR - 0.03);
+        seg.rotation.z = side * 0.7;
+        tail.add(seg);
+      }
+    }
+    // Striping band across the crown.
+    for (let i = 0; i < 11; i++) {
+      const seg = part(rbox(0.2, 0.12, 0.05, 0.015),
+        i % 2 === 0 ? M.stripeRed : M.stripeWhite, { cast: false });
+      seg.position.set(-1.1 + i * 0.22, 2.62, REAR + 0.68);
+      seg.rotation.x = -0.58;
+      tail.add(seg);
     }
 
-    // Step bumper with the centre hydraulic pack.
-    const stepBar = part(rbox(2.24, 0.18, 0.42, 0.05), M.bumper);
-    stepBar.position.set(0, 0.14, RZ - 0.24);
-    box.add(stepBar);
-    const pack = part(rbox(0.56, 0.28, 0.3, 0.04), M.armPaint);
-    pack.position.set(0, 0.2, RZ - 0.3);
-    box.add(pack);
-    for (const side of [-1, 1]) {
-      const stay = part(rbox(0.12, 0.42, 0.12, 0.03), M.darkMetal);
-      stay.position.set(side * 0.82, -0.06, RZ - 0.1);
-      box.add(stay);
+    // Control station and ladder, on opposite flanks.
+    const panel = part(rbox(0.14, 0.4, 0.3, 0.03), M.darkMetal);
+    panel.position.set(-(THW + 0.05), 1.5, REAR + 0.95);
+    tail.add(panel);
+    const panelFace = part(rbox(0.04, 0.28, 0.22, 0.02), M.armPaint, { cast: false });
+    panelFace.position.set(-(THW + 0.13), 1.5, REAR + 0.95);
+    tail.add(panelFace);
+    for (const y of [0.62, 0.98, 1.34, 1.7]) {
+      const rung = part(rbox(0.06, 0.05, 0.28, 0.02), M.metal);
+      rung.position.set(THW + 0.06, y, REAR + 0.95);
+      tail.add(rung);
     }
+
+    // Step bumper and lamp clusters.
+    const stepBar = part(rbox(TW * 0.94, 0.18, 0.4, 0.05), M.bumper);
+    stepBar.position.set(0, 0.16, REAR - 0.2);
+    tail.add(stepBar);
+    const pack = part(rbox(0.56, 0.3, 0.3, 0.04), M.armPaint);
+    pack.position.set(0, 0.26, REAR - 0.24);
+    tail.add(pack);
+
+    // Clear of the bumper, which spans REAR-0.4 .. REAR.
+    this.tailLampZ = REAR - 0.44;
   }
 
   // --- Side-loading arm ----------------------------------------------------
@@ -817,28 +795,23 @@ export class Truck {
       this.sideIndicators.push({ mesh: rep, side });
     }
 
-    // Rear clusters sit on the step bumper, laid out horizontally. They were
-    // on the tailgate face, where the new packer rams, ladder and control
-    // station now sit — the hardware buried them completely.
-    const REAR_Z = -0.34;
+    // Lamp clusters on the tail's step bumper.
+    const REAR_Z = this.tailLampZ;
     this.rearIndicators = [];
     for (const side of [-1, 1]) {
-      const housing = part(rbox(0.62, 0.2, 0.1, 0.03), M.trim);
-      housing.position.set(side * 0.72, 0.15, REAR_Z);
-      this.containerGroup.add(housing);
-
+      const housing = part(rbox(0.64, 0.2, 0.1, 0.03), M.trim);
+      housing.position.set(side * 0.74, 0.17, REAR_Z);
+      this.tailGroup.add(housing);
       const brake = part(rbox(0.16, 0.14, 0.05, 0.02), M.tail, { cast: false });
-      brake.position.set(side * 0.54, 0.15, REAR_Z - 0.05);
-      this.containerGroup.add(brake);
-
+      brake.position.set(side * 0.56, 0.17, REAR_Z - 0.05);
+      this.tailGroup.add(brake);
       const ind = part(rbox(0.16, 0.14, 0.05, 0.02), M.indicator.clone(), { cast: false });
-      ind.position.set(side * 0.72, 0.15, REAR_Z - 0.05);
-      this.containerGroup.add(ind);
+      ind.position.set(side * 0.74, 0.17, REAR_Z - 0.05);
+      this.tailGroup.add(ind);
       this.rearIndicators.push({ mesh: ind, side });
-
       const rev = part(rbox(0.16, 0.14, 0.05, 0.02), M.reverse, { cast: false });
-      rev.position.set(side * 0.9, 0.15, REAR_Z - 0.05);
-      this.containerGroup.add(rev);
+      rev.position.set(side * 0.92, 0.17, REAR_Z - 0.05);
+      this.tailGroup.add(rev);
     }
 
     // Amber beacon bar across the cab roof.
