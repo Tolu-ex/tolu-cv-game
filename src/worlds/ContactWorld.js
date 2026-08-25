@@ -1,13 +1,9 @@
 import * as THREE from 'three';
 import { mesh, createWindmill, makeTextTexture } from '../utils/geoBuilders.js';
 import { PALETTE } from '../utils/colors.js';
+import { seededRandom } from '../utils/rng.js';
 
 const C = PALETTE.contact;
-
-function seededRandom(seed) {
-  let s = seed;
-  return () => { s = (s * 9301 + 49297) % 233280; return s / 233280; };
-}
 
 /** Instanced tulip field — cheap enough to plant thousands of flowers. */
 function createTulipField({ bands = 6, rowsPerBand = 6, perRow = 26, spacing = 1.1, startZ = -60, bandWidth = 6 } = {}) {

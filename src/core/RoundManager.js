@@ -15,7 +15,6 @@ import { Bin, BIN_KINDS } from '../entities/Bin.js';
  */
 
 const PICKUP_RANGE = 4.2;     // how close the kerb side must pass a bin
-const PICKUP_AHEAD = 1.2;     // bins slightly ahead of the arm still count
 const DEPOT_RANGE = 7.0;
 
 export class RoundManager {

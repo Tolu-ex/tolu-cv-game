@@ -1,13 +1,9 @@
 import * as THREE from 'three';
 import { mesh, makeTextTexture } from '../utils/geoBuilders.js';
 import { PALETTE } from '../utils/colors.js';
+import { seededRandom } from '../utils/rng.js';
 
 const C = PALETTE.market;
-
-function seededRandom(seed) {
-  let s = seed;
-  return () => { s = (s * 9301 + 49297) % 233280; return s / 233280; };
-}
 
 function neonTexture(text, color) {
   return makeTextTexture((ctx, w, h) => {

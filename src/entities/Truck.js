@@ -1,194 +1,12 @@
 import * as THREE from 'three';
-import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js';
-import * as BufferGeometryUtils from 'three/examples/jsm/utils/BufferGeometryUtils.js';
-import { makeTextTexture } from '../utils/geoBuilders.js';
+import { rbox, extrudeProfile, part, tyreGeometry, rimGeometry } from './truck/parts.js';
+import { createTruckMaterials } from './truck/materials.js';
 import {
-  paintMaterial, chromeMaterial, metalMaterial, glassMaterial,
-  rubberMaterial, plasticMaterial, lensMaterial, reflectiveMaterial,
-} from '../utils/materials.js';
-import { PALETTE } from '../utils/colors.js';
+  WHEEL_R, TRACK, AXLE_FRONT, AXLE_REAR_A, AXLE_REAR_B, FRAME_Y,
+  CAB_Z, CAB_Y, CAB_W, BODY_Z, BODY_Y, BODY_W,
+  REAR_ARCH_R, FRONT_ARCH_R, FRONT_ARCH_U,
+} from './truck/dimensions.js';
 
-const C = PALETTE.truck;
-
-// --- Layout constants (Z+ is forward) ---------------------------------------
-const WHEEL_R = 0.62;      // sized to fill the arches under the taller body
-const TRACK = 1.09;        // half-distance between left/right wheel centres
-const AXLE_FRONT = 2.46;
-const AXLE_REAR_A = -1.44;
-const AXLE_REAR_B = -2.74;
-const FRAME_Y = 0.82;
-
-// ---------------------------------------------------------------------------
-// Textures
-// ---------------------------------------------------------------------------
-
-function rovaDecalTexture() {
-  return makeTextTexture((ctx, w, h) => {
-    ctx.clearRect(0, 0, w, h);
-    ctx.fillStyle = '#ffffff';
-    ctx.beginPath(); ctx.roundRect(4, 4, w - 8, h - 8, 16); ctx.fill();
-    ctx.fillStyle = '#3fae2f';
-    ctx.font = '900 88px Rubik, Arial, sans-serif';
-    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-    ctx.fillText('ROVA', w / 2, h / 2 - 8);
-    ctx.font = '600 22px Rubik, Arial, sans-serif';
-    ctx.fillStyle = '#4a4a4a';
-    ctx.fillText('AFVAL & GRONDSTOFFEN', w / 2, h / 2 + 42);
-    // Electric strapline, as the real Dutch electric refuse fleet carries.
-    ctx.fillStyle = '#0f9d58';
-    ctx.beginPath(); ctx.roundRect(w / 2 - 108, h / 2 + 56, 216, 34, 17); ctx.fill();
-    ctx.fillStyle = '#ffffff';
-    ctx.font = '800 20px Rubik, Arial, sans-serif';
-    ctx.fillText('\u26A1 100% ELEKTRISCH', w / 2, h / 2 + 74);
-  }, 512, 220);
-}
-
-function plateTexture() {
-  return makeTextTexture((ctx, w, h) => {
-    ctx.fillStyle = '#f5d800';
-    ctx.beginPath(); ctx.roundRect(0, 0, w, h, 10); ctx.fill();
-    ctx.fillStyle = '#1a3a8f';
-    ctx.fillRect(0, 0, w * 0.13, h);
-    ctx.fillStyle = '#f5d800';
-    ctx.font = '700 22px Rubik, sans-serif';
-    ctx.textAlign = 'center';
-    ctx.fillText('NL', w * 0.065, h * 0.68);
-    ctx.fillStyle = '#111';
-    ctx.font = '900 54px "JetBrains Mono", monospace';
-    ctx.textBaseline = 'middle';
-    ctx.fillText('ROVA-01', w * 0.57, h * 0.54);
-  }, 320, 88);
-}
-
-/** Diagonal hazard chevrons for the tailgate. */
-function chevronTexture() {
-  return makeTextTexture((ctx, w, h) => {
-    ctx.fillStyle = '#f5e400';
-    ctx.fillRect(0, 0, w, h);
-    ctx.fillStyle = '#e03a1f';
-    const step = 54;
-    for (let x = -h; x < w + h; x += step * 2) {
-      ctx.beginPath();
-      ctx.moveTo(x, h); ctx.lineTo(x + step, h);
-      ctx.lineTo(x + step + h, 0); ctx.lineTo(x + h, 0);
-      ctx.closePath(); ctx.fill();
-    }
-  }, 512, 96);
-}
-
-// ---------------------------------------------------------------------------
-// Geometry helpers
-// ---------------------------------------------------------------------------
-
-/** Bevelled box — real panels have an edge radius, sharp corners read as toy. */
-function rbox(w, h, d, radius = 0.035, segments = 2) {
-  const r = Math.min(radius, Math.min(w, h, d) / 2 - 1e-4);
-  return new RoundedBoxGeometry(w, h, d, segments, r);
-}
-
-/**
- * Extrudes a 2D side-profile across the vehicle's width.
- *
- * This is the difference between a designed body and a pile of boxes. A profile
- * carries the whole silhouette in one surface — raked screen flowing into a
- * curved roof, wheel arches cut into the lower edge, a character line — and the
- * extrusion bevel rounds every edge of it at once. Stacking rounded boxes can
- * never produce a continuous surface, which is exactly why it reads as a toy.
- *
- * Shape space: +X is forward (world +Z), +Y is up. The result is rotated so the
- * extrusion runs across the vehicle, and centred on X.
- */
-function extrudeProfile(shape, width, { bevel = 0.045, curveSegments = 10 } = {}) {
-  const geo = new THREE.ExtrudeGeometry(shape, {
-    depth: Math.max(0.01, width - bevel * 2),
-    bevelEnabled: true,
-    bevelThickness: bevel,
-    bevelSize: bevel,
-    bevelSegments: 2,
-    curveSegments,
-  });
-  geo.rotateY(-Math.PI / 2);        // shape +X -> world +Z
-  geo.computeBoundingBox();         // centre across the width
-  const bb = geo.boundingBox;
-  geo.translate(-(bb.min.x + bb.max.x) / 2, 0, 0);
-  geo.computeVertexNormals();
-  return geo;
-}
-
-function part(geo, material, { cast = true, receive = true } = {}) {
-  const m = new THREE.Mesh(geo, material);
-  m.castShadow = cast;
-  m.receiveShadow = receive;
-  return m;
-}
-
-/** Lathed tyre with a bulged sidewall and rounded shoulders. */
-function tyreGeometry(radius, width, rimR) {
-  const hw = width / 2;
-  const pts = [
-    new THREE.Vector2(rimR, -hw * 0.98),
-    new THREE.Vector2(radius * 0.80, -hw * 1.02),
-    new THREE.Vector2(radius * 0.95, -hw * 0.86),
-    new THREE.Vector2(radius, -hw * 0.52),
-    new THREE.Vector2(radius, hw * 0.52),
-    new THREE.Vector2(radius * 0.95, hw * 0.86),
-    new THREE.Vector2(radius * 0.80, hw * 1.02),
-    new THREE.Vector2(rimR, hw * 0.98),
-  ];
-  const g = new THREE.LatheGeometry(pts, 26);
-  g.rotateZ(Math.PI / 2); // axis along X
-  return g;
-}
-
-/** Rim barrel + face + spokes + lug nuts, merged into one draw call. */
-function rimGeometry(rimR, width) {
-  const parts = [];
-  const barrel = new THREE.CylinderGeometry(rimR, rimR, width * 0.96, 20);
-  parts.push(barrel);
-
-  const face = new THREE.CylinderGeometry(rimR * 0.99, rimR * 0.99, 0.05, 20);
-  face.translate(0, width * 0.42, 0);
-  parts.push(face);
-
-  for (let i = 0; i < 6; i++) {
-    const spoke = new THREE.BoxGeometry(rimR * 0.26, 0.06, rimR * 1.55);
-    spoke.rotateY((i / 6) * Math.PI);
-    spoke.translate(0, width * 0.45, 0);
-    parts.push(spoke);
-  }
-
-  const hub = new THREE.CylinderGeometry(rimR * 0.34, rimR * 0.3, 0.14, 12);
-  hub.translate(0, width * 0.5, 0);
-  parts.push(hub);
-
-  for (let i = 0; i < 8; i++) {
-    const a = (i / 8) * Math.PI * 2;
-    const lug = new THREE.CylinderGeometry(0.028, 0.028, 0.06, 6);
-    lug.translate(Math.cos(a) * rimR * 0.5, width * 0.52, Math.sin(a) * rimR * 0.5);
-    parts.push(lug);
-  }
-
-  const merged = BufferGeometryUtils.mergeGeometries(parts, false);
-  parts.forEach((p) => p.dispose());
-  merged.rotateZ(Math.PI / 2);
-  return merged;
-}
-
-// ---------------------------------------------------------------------------
-// Truck
-// ---------------------------------------------------------------------------
-
-/**
- * ROVA side-loading refuse truck: DAF-style silver cab, lime compactor body and
- * a hydraulic side arm.
- *
- * Structure matters for the driving feel — the rig is split so the sprung mass
- * can move independently of the wheels:
- *
- *   group      root: world position + heading
- *    ├ body    sprung mass: pitches under braking, rolls in corners
- *    └ wheels  unsprung: stay planted on the ground plane
- */
 export class Truck {
   constructor() {
     this.group = new THREE.Group();
@@ -220,44 +38,7 @@ export class Truck {
   }
 
   _buildMaterials() {
-    const decalTex = rovaDecalTexture();
-    this.mats = {
-      cabPaint: paintMaterial(C.cab, { metalness: 0.15, roughness: 0.3 }),
-      bodyPaint: paintMaterial(C.container, { metalness: 0.45, roughness: 0.38 }),
-      bodyPaintDark: paintMaterial(C.containerDark, { metalness: 0.45, roughness: 0.42 }),
-      chrome: chromeMaterial(),
-      metal: metalMaterial(),
-      darkMetal: metalMaterial(0x33373c, { roughness: 0.5 }),
-      glass: glassMaterial(),
-      rubber: rubberMaterial(),
-      bumper: plasticMaterial(0x2e3237, { roughness: 0.6 }),
-      trim: plasticMaterial(0x1c1f23, { roughness: 0.75 }),
-      hydraulic: chromeMaterial(0xd8dde2, { roughness: 0.05 }),
-      armPaint: paintMaterial(C.arm, { metalness: 0.25, roughness: 0.45 }),
-      amber: lensMaterial(0xffa71a, 1.1),
-      chargeLamp: lensMaterial(0x4dffa8, 1.6),
-      indicator: lensMaterial(0xff8c1a, 0.12),
-      arch: plasticMaterial(0x15181c, { roughness: 0.95 }),
-      rim: new THREE.MeshStandardMaterial({
-        color: 0xe4e9ee, metalness: 0.45, roughness: 0.3, envMapIntensity: 1.2,
-      }),
-      stripeRed: reflectiveMaterial(0xd42a1a),
-      stripeWhite: reflectiveMaterial(0xf2f2f2),
-      drl: lensMaterial(0xdfefff, 1.5),
-      headlight: lensMaterial(0xfff6de, 1.0),
-      tail: lensMaterial(0xff2a1f, 0.55),
-      reverse: lensMaterial(0xffffff, 0.0),
-      reflective: reflectiveMaterial(0xf5e400),
-      decal: new THREE.MeshStandardMaterial({
-        map: decalTex, transparent: true, roughness: 0.45, metalness: 0.0,
-        envMapIntensity: 0.5, polygonOffset: true, polygonOffsetFactor: -2,
-      }),
-      plate: new THREE.MeshStandardMaterial({ map: plateTexture(), roughness: 0.5, metalness: 0.1 }),
-      chevron: new THREE.MeshStandardMaterial({
-        map: chevronTexture(), roughness: 0.45, metalness: 0.2,
-        emissiveMap: chevronTexture(), emissive: 0xffffff, emissiveIntensity: 0.25,
-      }),
-    };
+    this.mats = createTruckMaterials();
   }
 
   _build() {
@@ -384,9 +165,6 @@ export class Truck {
   _buildCab() {
     const M = this.mats;
     const cab = new THREE.Group();
-    const CAB_Z = 1.40;   // cab rear plane, world Z
-    const CAB_Y = 0.82;   // cab floor, world Y
-    const CAB_W = 2.42;
     cab.position.set(0, CAB_Y, CAB_Z);
     this.body.add(cab);
     this.cab = cab;
@@ -395,7 +173,7 @@ export class Truck {
     // Profile coords: u forward from the cab's rear plane, v up from the floor.
     const p = new THREE.Shape();
     // Front axle sits at world 2.46, i.e. u = 2.46 - CAB_Z = 1.06.
-    const fArch = 1.06, fArchR = 0.62;
+    const fArch = FRONT_ARCH_U, fArchR = FRONT_ARCH_R;
     p.moveTo(0, 0.04);
     p.lineTo(fArch - fArchR, 0.04);
     p.absarc(fArch, 0.04, fArchR, Math.PI, 0, true);  // front wheel arch
@@ -573,12 +351,10 @@ export class Truck {
     visor.rotation.x = 0.26;
     cab.add(visor);
 
-    this.markerLamps = [];
     for (const x of [-0.84, -0.3, 0.3, 0.84]) {
       const lamp = part(rbox(0.15, 0.06, 0.1, 0.02), M.amber, { cast: false });
       lamp.position.set(x, 2.12, 1.68);
       cab.add(lamp);
-      this.markerLamps.push(lamp);
     }
 
     // Charge port where a diesel would carry its stack.
@@ -601,10 +377,8 @@ export class Truck {
   // wheel arches are cut into one surface.
   _buildContainer() {
     const M = this.mats;
-    const BODY_Z = -3.5;   // rear plane, world Z
-    const BODY_Y = 0.84;
-    const W = 2.44;
-    const HW = W / 2;
+    const W = BODY_W;
+    const HW = BODY_W / 2;
 
     const box = new THREE.Group();
     box.position.set(0, BODY_Y, BODY_Z);
@@ -619,7 +393,7 @@ export class Truck {
     // above the frame) a 0.58 m tyre is 2*sqrt(0.58² - 0.31²) ≈ 0.98 wide, so
     // the opening must exceed that; the radius also sets how far it arcs over
     // the tyre's crown.
-    const archR = 0.6;
+    const archR = REAR_ARCH_R;
     const p2 = new THREE.Shape();
     p2.moveTo(0, 0.3);                         // rear, above the bumper
     p2.lineTo(0, 0.05);
@@ -877,7 +651,6 @@ export class Truck {
     const HW = this.cabDims.CAB_W / 2;
 
     // Front clusters recessed into the fascia beside the bumper.
-    this.headlampLenses = [];
     this.frontIndicators = [];
     for (const side of [-1, 1]) {
       const housing = part(rbox(0.5, 0.34, 0.16, 0.05), M.trim);
@@ -886,7 +659,6 @@ export class Truck {
       const lens = part(rbox(0.42, 0.26, 0.07, 0.03), M.headlight, { cast: false });
       lens.position.set(side * 0.86, 0.56, 2.02);
       cab.add(lens);
-      this.headlampLenses.push(lens);
 
       // Separate indicator lens beside each headlamp.
       const ind = part(rbox(0.16, 0.2, 0.06, 0.025), M.indicator.clone(), { cast: false });
@@ -911,7 +683,6 @@ export class Truck {
 
     // Rear cluster on the tailgate (tailgate face sits at body-local z ≈ -0.04).
     const REAR_Z = -0.06;
-    this.brakeLenses = [];
     this.rearIndicators = [];
     for (const side of [-1, 1]) {
       const housing = part(rbox(0.24, 0.8, 0.12, 0.04), M.trim);
@@ -921,7 +692,6 @@ export class Truck {
       const brake = part(rbox(0.17, 0.24, 0.06, 0.025), M.tail, { cast: false });
       brake.position.set(side * 0.9, 1.42, REAR_Z - 0.07);
       this.containerGroup.add(brake);
-      this.brakeLenses.push(brake);
 
       const ind = part(rbox(0.17, 0.17, 0.06, 0.025), M.indicator.clone(), { cast: false });
       ind.position.set(side * 0.9, 1.16, REAR_Z - 0.07);

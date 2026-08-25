@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { mesh, createTree, createBush, createCloud, createLampPost } from '../utils/geoBuilders.js';
 import { PALETTE } from '../utils/colors.js';
+import { seededRandom } from '../utils/rng.js';
 
 const C = PALETTE.nature;
 const P = PALETTE.portal;
@@ -22,14 +23,6 @@ export const HUB_PORTAL_DEFS = [
   // Face back toward the center so the truck naturally drives "into" it
   heading: p.angle + Math.PI,
 }));
-
-function seededRandom(seed) {
-  let s = seed;
-  return () => {
-    s = (s * 9301 + 49297) % 233280;
-    return s / 233280;
-  };
-}
 
 export function buildHubWorld() {
   const group = new THREE.Group();
