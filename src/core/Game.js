@@ -233,12 +233,11 @@ export class Game {
     const elapsed = this.clock.elapsedTime;
 
     this.truck.update(delta, this.input, this.currentBounds);
-    // Mouse orbit, then recentre only once the player has let go for a moment.
+    // Mouse orbit. The camera holds whatever angle the player set — C asks it
+    // to swing back behind the truck.
     this.chaseCam.applyPointer(this.input.consumeCameraInput());
-    const idleMs = performance.now() - this.input.lastPointerAt;
-    this.chaseCam.update(delta, this.truck, {
-      recenter: !this.input.dragging && idleMs > 1800,
-    });
+    if (this.input.consumeRecenter()) this.chaseCam.requestRecenter();
+    this.chaseCam.update(delta, this.truck);
 
     if (this.input.consumeLightToggle()) {
       const on = this.truck.toggleHeadlights();

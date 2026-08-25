@@ -26,8 +26,9 @@ bundle.
 - **W / A / S / D** or **Arrow keys** — drive
 - **Space** — brake
 - **L** — headlights on/off
-- **Drag** (left or right button) — orbit the camera, Roblox-style
-- **Scroll** — zoom in/out
+- **Drag** (left or right button) — orbit the camera freely, Roblox-style
+- **Scroll** — zoom in/out (4–30 m)
+- **C** — swing the camera back behind the truck
 - Drive the truck through a glowing portal archway to enter that world's
   story card, then keep driving through the world's exit portal to return to
   the nature world.
@@ -92,11 +93,17 @@ each through a damped spring. Measured behaviour:
 | hard braking | +3.5° (dive) | 0° | 64 |
 
 The chase camera widens its FOV with speed, swings wide of turns to let you see
-into the corner, and adds speed-scaled shake. Dragging the mouse orbits it
-around the truck and the wheel zooms (5–26 m); the orbit is stored as an
-*offset* from the behind-the-truck pose rather than an absolute angle, so the
-camera still follows your heading while you look around, and it drifts gently
-back behind you once you are driving and have let go of the mouse.
+into the corner, and adds speed-scaled shake. Dragging orbits it around the
+truck and the wheel zooms.
+
+The orbit is stored as an *offset* from the behind-the-truck pose rather than an
+absolute angle, so the camera keeps following your heading while you look
+around — an absolute-yaw camera makes driving genuinely disorienting. The
+camera then **holds whatever angle you set it to**. An earlier version drifted
+back behind the truck a second or two after you released the mouse, which made
+free-look feel like it never took: you would aim at something and watch the view
+slide off it. `C` swings it back instead, and any drag cancels a recentre in
+progress.
 [`TruckFX.js`](src/entities/TruckFX.js) adds wheel dust from a recycled sprite
 pool (one draw call, no per-puff allocation); dust is tinted per world via
 `dustColor`, so Ile-Ife throws red laterite and Haarlem throws grey cobble grit.

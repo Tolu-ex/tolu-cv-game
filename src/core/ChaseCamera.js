@@ -12,8 +12,8 @@ export class ChaseCamera {
   constructor(camera, {
     distance = 12, height = 5.2, lookHeight = 1.6, stiffness = 4.5,
     baseFov = 58, maxFovBoost = 9, swing = 2.4,
-    minDistance = 5, maxDistance = 26,
-    orbitSensitivity = 0.005, zoomSensitivity = 0.012,
+    minDistance = 4, maxDistance = 30,
+    orbitSensitivity = 0.0065, zoomSensitivity = 0.012,
   } = {}) {
     this.camera = camera;
     this.distance = distance;
@@ -40,14 +40,15 @@ export class ChaseCamera {
     // the camera still follows the truck's heading while you look around.
     this.yawOffset = 0;
     this.pitchOffset = 0;
-    this.minPitch = -0.35;   // just below level
-    this.maxPitch = 1.15;    // near top-down
+    this.minPitch = -0.28;   // low, near ground level looking up at the truck
+    this.maxPitch = 1.42;    // almost straight down
   }
 
   /** Instantly snap behind the target — used right after a world transition. */
   snapTo(target) {
     this._swingAmount = 0;
     this._shake = 0;
+    this._recenterRequest = false;
     // Reset the look angles so you always spawn facing forward, but keep the
     // player's chosen zoom — that is a preference, not per-world framing.
     this.yawOffset = 0;
@@ -82,14 +83,20 @@ export class ChaseCamera {
     );
   }
 
+  /** Smoothly swings the view back behind the truck (bound to C). */
+  requestRecenter() {
+    this._recenterRequest = true;
+  }
+
   /** Applies one frame of mouse orbit/zoom input. */
   applyPointer({ dx = 0, dy = 0, zoom = 0 }) {
+    if (dx || dy) this._recenterRequest = false; // player takes back control
     if (dx) this.yawOffset -= dx * this.orbitSensitivity;
     if (dy) {
       // Subtract, so dragging up raises the camera over the truck — the same
       // direction as OrbitControls and most orbit viewers.
       this.pitchOffset = THREE.MathUtils.clamp(
-        this.pitchOffset - dy * this.orbitSensitivity, -1.0, 1.0,
+        this.pitchOffset - dy * this.orbitSensitivity, -1.2, 1.4,
       );
     }
     if (zoom) {
@@ -102,16 +109,22 @@ export class ChaseCamera {
     this.yawOffset = Math.atan2(Math.sin(this.yawOffset), Math.cos(this.yawOffset));
   }
 
-  update(delta, target, { recenter = false } = {}) {
+  update(delta, target) {
     const speedFrac = THREE.MathUtils.clamp(Math.abs(target.speed) / target.maxSpeed, 0, 1);
 
-    // Gentle drift back behind the truck once you are driving and have let go
-    // of the mouse. Slow enough not to fight the player, but it keeps you
-    // oriented instead of stranded looking sideways at speed.
-    if (recenter && speedFrac > 0.25) {
-      const pull = 1 - Math.pow(0.55, delta);
+    // The camera stays exactly where the player put it. An earlier version
+    // drifted back behind the truck a second or two after you let go of the
+    // mouse, which made free-look feel like it never took — you would aim at
+    // something and watch the view slide off it. Press C to recentre instead.
+    if (this._recenterRequest) {
+      const pull = 1 - Math.pow(0.008, delta);
       this.yawOffset = THREE.MathUtils.lerp(this.yawOffset, 0, pull);
       this.pitchOffset = THREE.MathUtils.lerp(this.pitchOffset, 0, pull);
+      if (Math.abs(this.yawOffset) < 0.01 && Math.abs(this.pitchOffset) < 0.01) {
+        this.yawOffset = 0;
+        this.pitchOffset = 0;
+        this._recenterRequest = false;
+      }
     }
 
     // Swing trails the steering input rather than snapping to it.

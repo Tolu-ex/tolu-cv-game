@@ -4,6 +4,7 @@ const LEFT_KEYS = new Set(['KeyA', 'ArrowLeft']);
 const RIGHT_KEYS = new Set(['KeyD', 'ArrowRight']);
 const BRAKE_KEYS = new Set(['Space']);
 const LIGHT_KEYS = new Set(['KeyL']);
+const RECENTER_KEYS = new Set(['KeyC']);
 
 /**
  * Keyboard + mouse input.
@@ -29,9 +30,11 @@ export class InputController {
     this.lastPointerAt = 0;
 
     this._lightToggleQueued = false;
+    this._recenterQueued = false;
 
     this._down = (e) => {
       if (!this.locked && LIGHT_KEYS.has(e.code)) this._lightToggleQueued = true;
+      if (!this.locked && RECENTER_KEYS.has(e.code)) this._recenterQueued = true;
       this._set(e.code, true);
     };
     this._up = (e) => this._set(e.code, false);
@@ -117,6 +120,13 @@ export class InputController {
     return q;
   }
 
+  /** True once per C press. */
+  consumeRecenter() {
+    const q = this._recenterQueued;
+    this._recenterQueued = false;
+    return q;
+  }
+
   clearKeys() {
     this.forward = this.backward = this.left = this.right = this.brake = false;
   }
@@ -136,6 +146,7 @@ export class InputController {
     this.dragging = false;
     this.orbitDeltaX = this.orbitDeltaY = this.zoomDelta = 0;
     this._lightToggleQueued = false;
+    this._recenterQueued = false;
   }
 
   unlock() {
