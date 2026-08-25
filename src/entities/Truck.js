@@ -418,9 +418,9 @@ export class Truck {
     p2.lineTo(0.08, 1.60);                     // short rear face
     // Hopper notch cut into the profile, so the cavity is a genuine void in
     // the shell rather than a dark box placed in front of a solid wall.
-    p2.lineTo(0.95, 1.46);                     // cavity roof, angled
-    p2.lineTo(0.95, 0.58);                     // cavity back wall
-    p2.lineTo(0.06, 0.46);                     // back out below the opening
+    p2.lineTo(0.95, 1.52);                     // cavity roof, angled
+    p2.lineTo(0.95, 0.34);                     // cavity back wall
+    p2.lineTo(0.06, 0.22);                     // back out below the opening
     p2.lineTo(0, 0.3);
     p2.closePath();
 
@@ -488,9 +488,9 @@ export class Truck {
     // framed by hydraulic rams and conspicuity striping. It used to be a flat
     // slab, which read as a shipping container rather than a truck.
     const RZ = 0.06;          // outer face of the tailgate
-    const OPEN_HW = 0.88;     // half-width of the hopper opening
-    const OPEN_LO = 0.50;     // opening, bottom edge
-    const OPEN_HI = 1.52;     // opening, top edge (under the tail slope)
+    const OPEN_HW = 0.97;     // half-width — the mouth dominates the tail
+    const OPEN_LO = 0.26;     // opening drops nearly to the bumper
+    const OPEN_HI = 1.58;     // opening, top edge (under the tail slope)
     const DEPTH = 0.90;       // how far the hopper recedes into the body
 
     // The notch spans the full width, so without these it would open straight
@@ -515,7 +515,7 @@ export class Truck {
 
     // Scoop floor: slopes up and inward, the surface waste is raked along.
     const scoop = part(rbox(OPEN_HW * 2, 0.12, DEPTH * 1.15, 0.03), M.hopperFloor, { cast: false });
-    scoop.position.set(0, OPEN_LO + 0.16, RZ + DEPTH * 0.55);
+    scoop.position.set(0, OPEN_LO + 0.20, RZ + DEPTH * 0.55);
     scoop.rotation.x = -0.36;
     box.add(scoop);
 
@@ -538,8 +538,8 @@ export class Truck {
       box.add(hinge);
     }
     // Sill below the opening, angled like the real lip.
-    const sill = part(rbox(W, 0.46, 0.26, 0.05), M.bodyPaint);
-    sill.position.set(0, OPEN_LO - 0.18, RZ + 0.02);
+    const sill = part(rbox(W, 0.2, 0.26, 0.04), M.bodyPaint);
+    sill.position.set(0, OPEN_LO - 0.09, RZ + 0.02);
     sill.rotation.x = 0.16;
     box.add(sill);
 
@@ -565,8 +565,67 @@ export class Truck {
       box.add(hood);
       const sillStripe = part(rbox(0.19, 0.11, 0.05, 0.015),
         i % 2 === 0 ? M.stripeRed : M.stripeWhite, { cast: false });
-      sillStripe.position.set(-1.05 + i * 0.21, OPEN_LO - 0.36, RZ - 0.08);
+      sillStripe.position.set(-1.05 + i * 0.21, OPEN_LO - 0.09, RZ - 0.08);
       box.add(sillStripe);
+    }
+
+    // --- Tail hardware ------------------------------------------------------
+    // Rear loaders carry their packer gear on the OUTSIDE of the tail, and it
+    // is most of what you actually see: big rams up the corners, a control
+    // station, ladder rungs, hinges and placards. Without it the tail is just
+    // a painted panel.
+    for (const side of [-1, 1]) {
+      // Packer ram running up the outer corner, barrel over bright rod.
+      const ramBody = part(new THREE.CylinderGeometry(0.085, 0.085, 0.86, 10), M.darkMetal);
+      ramBody.position.set(side * 1.12, 1.28, RZ - 0.14);
+      box.add(ramBody);
+      const ramRod2 = part(new THREE.CylinderGeometry(0.045, 0.045, 0.58, 8), M.hydraulic);
+      ramRod2.position.set(side * 1.12, 0.72, RZ - 0.14);
+      box.add(ramRod2);
+      // Pivot lugs top and bottom.
+      for (const y of [1.74, 0.42]) {
+        const lug = part(rbox(0.16, 0.16, 0.16, 0.03), M.metal);
+        lug.position.set(side * 1.12, y, RZ - 0.14);
+        box.add(lug);
+      }
+      // Hydraulic hose run down the corner.
+      const hose = part(new THREE.CylinderGeometry(0.028, 0.028, 1.1, 6), M.trim);
+      hose.position.set(side * 1.19, 1.1, RZ - 0.02);
+      hose.rotation.z = 0.06;
+      box.add(hose);
+    }
+
+    // Control station on the kerb side, where the loader stands.
+    const panelBox = part(rbox(0.16, 0.42, 0.3, 0.03), M.darkMetal);
+    panelBox.position.set(-1.2, 1.12, RZ + 0.22);
+    box.add(panelBox);
+    const panelFace = part(rbox(0.05, 0.3, 0.22, 0.02), M.armPaint, { cast: false });
+    panelFace.position.set(-1.31, 1.12, RZ + 0.22);
+    box.add(panelFace);
+
+    // Ladder rungs up the opposite corner.
+    for (const y of [0.44, 0.78, 1.12, 1.46]) {
+      const rung = part(rbox(0.26, 0.05, 0.07, 0.02), M.metal);
+      rung.position.set(1.06, y, RZ - 0.24);
+      box.add(rung);
+    }
+    const grabRail = part(new THREE.CylinderGeometry(0.03, 0.03, 1.2, 8), M.chrome);
+    grabRail.position.set(1.2, 1.0, RZ - 0.12);
+    box.add(grabRail);
+
+    // Placards on the sloped hood.
+    for (const x of [-0.5, -0.1, 0.3]) {
+      const plac = part(rbox(0.26, 0.14, 0.03, 0.01), M.trim, { cast: false });
+      plac.position.set(x, 2.02, RZ + 0.3);
+      plac.rotation.x = -0.42;
+      box.add(plac);
+    }
+    // Hinge plates where the tailgate swings.
+    for (const side of [-1, 1]) {
+      const plate = part(rbox(0.2, 0.26, 0.12, 0.02), M.darkMetal);
+      plate.position.set(side * 1.0, 1.86, RZ + 0.24);
+      plate.rotation.x = -0.42;
+      box.add(plate);
     }
 
     // Step bumper with the centre hydraulic pack.
@@ -758,25 +817,27 @@ export class Truck {
       this.sideIndicators.push({ mesh: rep, side });
     }
 
-    // Rear cluster on the tailgate (tailgate face sits at body-local z ≈ -0.04).
-    const REAR_Z = -0.06;
+    // Rear clusters sit on the step bumper, laid out horizontally. They were
+    // on the tailgate face, where the new packer rams, ladder and control
+    // station now sit — the hardware buried them completely.
+    const REAR_Z = -0.34;
     this.rearIndicators = [];
     for (const side of [-1, 1]) {
-      const housing = part(rbox(0.24, 0.8, 0.12, 0.04), M.trim);
-      housing.position.set(side * 1.07, 0.94, REAR_Z);
+      const housing = part(rbox(0.62, 0.2, 0.1, 0.03), M.trim);
+      housing.position.set(side * 0.72, 0.15, REAR_Z);
       this.containerGroup.add(housing);
 
-      const brake = part(rbox(0.17, 0.24, 0.06, 0.025), M.tail, { cast: false });
-      brake.position.set(side * 1.07, 1.18, REAR_Z - 0.07);
+      const brake = part(rbox(0.16, 0.14, 0.05, 0.02), M.tail, { cast: false });
+      brake.position.set(side * 0.54, 0.15, REAR_Z - 0.05);
       this.containerGroup.add(brake);
 
-      const ind = part(rbox(0.17, 0.17, 0.06, 0.025), M.indicator.clone(), { cast: false });
-      ind.position.set(side * 1.07, 0.94, REAR_Z - 0.07);
+      const ind = part(rbox(0.16, 0.14, 0.05, 0.02), M.indicator.clone(), { cast: false });
+      ind.position.set(side * 0.72, 0.15, REAR_Z - 0.05);
       this.containerGroup.add(ind);
       this.rearIndicators.push({ mesh: ind, side });
 
-      const rev = part(rbox(0.17, 0.17, 0.06, 0.025), M.reverse, { cast: false });
-      rev.position.set(side * 1.07, 0.72, REAR_Z - 0.07);
+      const rev = part(rbox(0.16, 0.14, 0.05, 0.02), M.reverse, { cast: false });
+      rev.position.set(side * 0.9, 0.15, REAR_Z - 0.05);
       this.containerGroup.add(rev);
     }
 
