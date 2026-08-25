@@ -5,6 +5,13 @@ const RIGHT_KEYS = new Set(['KeyD', 'ArrowRight']);
 const BRAKE_KEYS = new Set(['Space']);
 const LIGHT_KEYS = new Set(['KeyL']);
 const RECENTER_KEYS = new Set(['KeyC']);
+// Camera orbit on the keyboard. Drag-to-orbit is close to unusable on a laptop
+// trackpad — it needs the pad physically depressed while moving — so the
+// camera must be fully drivable without any pointer gesture at all.
+const CAM_LEFT_KEYS = new Set(['KeyQ']);
+const CAM_RIGHT_KEYS = new Set(['KeyE']);
+const CAM_UP_KEYS = new Set(['KeyR']);
+const CAM_DOWN_KEYS = new Set(['KeyF']);
 
 /**
  * Keyboard + mouse input.
@@ -28,6 +35,12 @@ export class InputController {
     this.zoomDelta = 0;
     this.dragging = false;
     this.lastPointerAt = 0;
+
+    // Held-key camera orbit.
+    this.camLeft = false;
+    this.camRight = false;
+    this.camUp = false;
+    this.camDown = false;
 
     this._lightToggleQueued = false;
     this._recenterQueued = false;
@@ -89,7 +102,13 @@ export class InputController {
     this._onWheel = (e) => {
       if (this.locked) return;
       e.preventDefault();
-      this.zoomDelta += e.deltaY;
+      if (e.shiftKey) {
+        // Two-finger scroll is effortless on a trackpad where dragging is not,
+        // so shift+scroll orbits rather than zooming.
+        this.orbitDeltaX += e.deltaY * 0.9 + e.deltaX * 0.9;
+      } else {
+        this.zoomDelta += e.deltaY;
+      }
       this.lastPointerAt = performance.now();
     };
 
@@ -129,6 +148,18 @@ export class InputController {
 
   clearKeys() {
     this.forward = this.backward = this.left = this.right = this.brake = false;
+    this.camLeft = this.camRight = this.camUp = this.camDown = false;
+  }
+
+  /**
+   * Orbit input from held keys, in pixels-equivalent so it can feed the same
+   * path as a drag. Scaled by delta so it is frame-rate independent.
+   */
+  cameraKeyDelta(delta) {
+    const RATE = 620;   // px-equivalent per second
+    const dx = ((this.camRight ? 1 : 0) - (this.camLeft ? 1 : 0)) * RATE * delta;
+    const dy = ((this.camDown ? 1 : 0) - (this.camUp ? 1 : 0)) * RATE * delta;
+    return { dx, dy };
   }
 
   _set(code, value) {
@@ -138,6 +169,10 @@ export class InputController {
     else if (LEFT_KEYS.has(code)) this.left = value;
     else if (RIGHT_KEYS.has(code)) this.right = value;
     else if (BRAKE_KEYS.has(code)) this.brake = value;
+    else if (CAM_LEFT_KEYS.has(code)) this.camLeft = value;
+    else if (CAM_RIGHT_KEYS.has(code)) this.camRight = value;
+    else if (CAM_UP_KEYS.has(code)) this.camUp = value;
+    else if (CAM_DOWN_KEYS.has(code)) this.camDown = value;
   }
 
   lock() {

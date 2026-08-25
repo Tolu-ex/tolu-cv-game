@@ -263,7 +263,15 @@ export class Game {
     this.truck.update(delta, this.input, this.currentBounds);
     // Mouse orbit. The camera holds whatever angle the player set — C asks it
     // to swing back behind the truck.
-    this.chaseCam.applyPointer(this.input.consumeCameraInput());
+    // Pointer drag and held-key orbit feed the same path, so the camera is
+    // fully controllable with no pointer gesture at all.
+    const pointerCam = this.input.consumeCameraInput();
+    const keyCam = this.input.cameraKeyDelta(delta);
+    this.chaseCam.applyPointer({
+      dx: pointerCam.dx + keyCam.dx,
+      dy: pointerCam.dy + keyCam.dy,
+      zoom: pointerCam.zoom,
+    });
     if (this.input.consumeRecenter()) this.chaseCam.requestRecenter();
     this.chaseCam.update(delta, this.truck);
 
