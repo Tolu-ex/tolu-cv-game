@@ -409,15 +409,18 @@ export class Truck {
     // biggest reason the old shape read wrong.
     p2.lineTo(4.85, 2.46);
     p2.quadraticCurveTo(4.85, 2.64, 4.64, 2.66); // front roof radius
-    p2.lineTo(0.36, 2.66);                     // roof
-    p2.quadraticCurveTo(0.06, 2.66, 0.02, 2.4); // rear roof radius
-    // Hopper notch. The shell is one extruded profile, so the cavity has to be
-    // cut into the profile itself — placing a dark box in front of a solid
-    // rear wall just hides it. Extrusion handles a concave outline fine.
-    p2.lineTo(0.02, 1.88);                     // down to just above the opening
-    p2.lineTo(0.98, 1.80);                     // recede in: cavity roof
-    p2.lineTo(0.98, 0.62);                     // down the cavity's back wall
-    p2.lineTo(0.02, 0.52);                     // back out below the opening
+    p2.lineTo(1.86, 2.66);                     // roof ends short of the tail
+    // The tail hood: a wedge sloping down and back. This single line is what
+    // makes a rear loader recognisable — every reference shares it, and a
+    // square back reads as a shipping container no matter how much detail is
+    // added to it.
+    p2.lineTo(0.30, 1.94);
+    p2.lineTo(0.08, 1.60);                     // short rear face
+    // Hopper notch cut into the profile, so the cavity is a genuine void in
+    // the shell rather than a dark box placed in front of a solid wall.
+    p2.lineTo(0.95, 1.46);                     // cavity roof, angled
+    p2.lineTo(0.95, 0.58);                     // cavity back wall
+    p2.lineTo(0.06, 0.46);                     // back out below the opening
     p2.lineTo(0, 0.3);
     p2.closePath();
 
@@ -486,9 +489,9 @@ export class Truck {
     // slab, which read as a shipping container rather than a truck.
     const RZ = 0.06;          // outer face of the tailgate
     const OPEN_HW = 0.88;     // half-width of the hopper opening
-    const OPEN_LO = 0.54;     // opening, bottom edge
-    const OPEN_HI = 1.72;     // opening, top edge
-    const DEPTH = 0.92;       // how far the hopper recedes into the body
+    const OPEN_LO = 0.50;     // opening, bottom edge
+    const OPEN_HI = 1.52;     // opening, top edge (under the tail slope)
+    const DEPTH = 0.90;       // how far the hopper recedes into the body
 
     // The notch spans the full width, so without these it would open straight
     // out of both flanks. Filling the outer thirds leaves the hopper mouth.
@@ -529,9 +532,6 @@ export class Truck {
     }
 
     // --- Tailgate frame around the opening ---
-    const topRail = part(rbox(W, 2.3 - OPEN_HI, 0.2, 0.05), M.bodyPaint);
-    topRail.position.set(0, (OPEN_HI + 2.3) / 2, RZ);
-    box.add(topRail);
     for (const side of [-1, 1]) {
       const hinge = part(new THREE.CylinderGeometry(0.07, 0.07, OPEN_HI - OPEN_LO + 0.3, 10), M.darkMetal);
       hinge.position.set(side * (HW - 0.07), (OPEN_LO + OPEN_HI) / 2, RZ + 0.06);
@@ -546,23 +546,27 @@ export class Truck {
     // Tailgate lift rams, outside the frame at the top corners.
     for (const side of [-1, 1]) {
       const barrel = part(new THREE.CylinderGeometry(0.075, 0.075, 0.8, 12), M.darkMetal);
-      barrel.rotation.x = -0.42;
-      barrel.position.set(side * 1.02, 2.2, 0.66);
+      barrel.rotation.x = -0.52;
+      barrel.position.set(side * 1.06, 2.06, 0.82);
       box.add(barrel);
       const rod = part(new THREE.CylinderGeometry(0.038, 0.038, 0.74, 10), M.hydraulic);
-      rod.rotation.x = -0.42;
-      rod.position.set(side * 1.02, 1.92, 0.32);
+      rod.rotation.x = -0.52;
+      rod.position.set(side * 1.06, 1.78, 0.48);
       box.add(rod);
     }
 
     // Conspicuity striping above and below the opening, as the reference has.
-    for (const y of [2.24, OPEN_LO - 0.44]) {
-      for (let i = 0; i < 11; i++) {
-        const seg = part(rbox(0.19, 0.11, 0.05, 0.015),
-          i % 2 === 0 ? M.stripeRed : M.stripeWhite, { cast: false });
-        seg.position.set(-1.05 + i * 0.21, y, RZ - 0.1);
-        box.add(seg);
-      }
+    // Striping sits on the sloped hood and along the sill, angled to match.
+    for (let i = 0; i < 11; i++) {
+      const hood = part(rbox(0.19, 0.11, 0.05, 0.015),
+        i % 2 === 0 ? M.stripeRed : M.stripeWhite, { cast: false });
+      hood.position.set(-1.05 + i * 0.21, 1.82, RZ + 0.16);
+      hood.rotation.x = -0.42;                 // lie flat on the slope
+      box.add(hood);
+      const sillStripe = part(rbox(0.19, 0.11, 0.05, 0.015),
+        i % 2 === 0 ? M.stripeRed : M.stripeWhite, { cast: false });
+      sillStripe.position.set(-1.05 + i * 0.21, OPEN_LO - 0.36, RZ - 0.08);
+      box.add(sillStripe);
     }
 
     // Step bumper with the centre hydraulic pack.
@@ -759,20 +763,20 @@ export class Truck {
     this.rearIndicators = [];
     for (const side of [-1, 1]) {
       const housing = part(rbox(0.24, 0.8, 0.12, 0.04), M.trim);
-      housing.position.set(side * 1.06, 1.02, REAR_Z);
+      housing.position.set(side * 1.07, 0.94, REAR_Z);
       this.containerGroup.add(housing);
 
       const brake = part(rbox(0.17, 0.24, 0.06, 0.025), M.tail, { cast: false });
-      brake.position.set(side * 1.06, 1.28, REAR_Z - 0.07);
+      brake.position.set(side * 1.07, 1.18, REAR_Z - 0.07);
       this.containerGroup.add(brake);
 
       const ind = part(rbox(0.17, 0.17, 0.06, 0.025), M.indicator.clone(), { cast: false });
-      ind.position.set(side * 1.06, 1.02, REAR_Z - 0.07);
+      ind.position.set(side * 1.07, 0.94, REAR_Z - 0.07);
       this.containerGroup.add(ind);
       this.rearIndicators.push({ mesh: ind, side });
 
       const rev = part(rbox(0.17, 0.17, 0.06, 0.025), M.reverse, { cast: false });
-      rev.position.set(side * 1.06, 0.78, REAR_Z - 0.07);
+      rev.position.set(side * 1.07, 0.72, REAR_Z - 0.07);
       this.containerGroup.add(rev);
     }
 
