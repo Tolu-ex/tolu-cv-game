@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, user-scalable=no" />
+    <title>ROVA CV Drive — Toluwalase Awobusuyi</title>
+    <meta name="description" content="Drive a ROVA garbage truck through a 3D world and dive into portals that tell the story of Toluwalase Awobusuyi's CV." />
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🚛</text></svg>" />
+  </head>
+  <body>
+    <div id="app">
+      <canvas id="scene"></canvas>
+
+      <!-- Loading screen -->
+      <div id="loading-screen">
+        <div class="loading-inner">
+          <div class="loading-truck">🚛</div>
+          <div class="loading-title">ROVA CV DRIVE</div>
+          <div class="loading-bar"><div class="loading-bar-fill" id="loading-bar-fill"></div></div>
+          <div class="loading-hint">loading world…</div>
+        </div>
+      </div>
+
+      <!-- Fade overlay for world transitions -->
+      <div id="fade-overlay"></div>
+
+      <!-- HUD -->
+      <div id="hud" class="hidden">
+        <div id="hud-top-left">
+          <div id="world-name">🌿 Nature World</div>
+          <div id="portal-progress"></div>
+        </div>
+        <div id="hud-top-right">
+          <div id="speedometer">
+            <div id="speed-value">0</div>
+            <div id="speed-unit">km/h</div>
+          </div>
+        </div>
+        <div id="minimap-wrap">
+          <div id="minimap-frame">
+            <canvas id="minimap" width="168" height="168"></canvas>
+          </div>
+          <div id="minimap-caption"></div>
+        </div>
+        <div id="hud-bottom">
+          <div id="controls-hint">
+            <span class="key">W</span><span class="key">A</span><span class="key">S</span><span class="key">D</span>
+            <span class="or">/</span>
+            <span class="key">↑</span><span class="key">←</span><span class="key">↓</span><span class="key">→</span>
+            <span class="hint-text">drive · <span class="key">SPACE</span> brake · drive through a glowing portal</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Story card -->
+      <div id="story-card-wrap" class="hidden">
+        <div id="story-card">
+          <div id="story-card-icon">🌷</div>
+          <div id="story-card-title">Title</div>
+          <div id="story-card-subtitle">Subtitle</div>
+          <div id="story-card-body"></div>
+          <button id="story-card-continue">Continue Driving →</button>
+        </div>
+      </div>
+
+      <!-- Intro / start screen -->
+      <div id="intro-screen">
+        <div class="intro-inner">
+          <div class="intro-emoji">🚛💨</div>
+          <h1>ROVA CV DRIVE</h1>
+          <p class="intro-sub">A driving tour through the CV of <strong>Toluwalase Awobusuyi</strong></p>
+          <p class="intro-desc">Hop in a ROVA garbage truck and roam a green world. Drive through the glowing portals to visit Haarlem, Ile-Ife, Lagos, the Street Market, Singapore and say hello.</p>
+          <button id="start-button">Start Engine 🔑</button>
+          <p class="intro-controls">WASD / Arrow keys to drive · Space to brake</p>
+        </div>
+      </div>
+    </div>
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>
