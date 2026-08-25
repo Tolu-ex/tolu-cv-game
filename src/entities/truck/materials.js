@@ -36,6 +36,10 @@ export function createTruckMaterials() {
       chargeLamp: lensMaterial(0x4dffa8, 1.6),
       indicator: lensMaterial(0xff8c1a, 0.12),
       arch: plasticMaterial(0x15181c, { roughness: 0.95 }),
+    // Hopper recess. Flat shading casts no shadow, so the sense of depth is
+    // carried entirely by value — these must sit well below the bodywork.
+    hopperDark: plasticMaterial(0x2b322d),
+    hopperFloor: plasticMaterial(0x5f6d63),
       rim: new THREE.MeshStandardMaterial({
         color: 0xe4e9ee, metalness: 0.45, roughness: 0.3, envMapIntensity: 1.2,
       }),

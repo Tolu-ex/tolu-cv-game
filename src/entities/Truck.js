@@ -411,6 +411,13 @@ export class Truck {
     p2.quadraticCurveTo(4.85, 2.64, 4.64, 2.66); // front roof radius
     p2.lineTo(0.36, 2.66);                     // roof
     p2.quadraticCurveTo(0.06, 2.66, 0.02, 2.4); // rear roof radius
+    // Hopper notch. The shell is one extruded profile, so the cavity has to be
+    // cut into the profile itself — placing a dark box in front of a solid
+    // rear wall just hides it. Extrusion handles a concave outline fine.
+    p2.lineTo(0.02, 1.88);                     // down to just above the opening
+    p2.lineTo(0.98, 1.80);                     // recede in: cavity roof
+    p2.lineTo(0.98, 0.62);                     // down the cavity's back wall
+    p2.lineTo(0.02, 0.52);                     // back out below the opening
     p2.lineTo(0, 0.3);
     p2.closePath();
 
@@ -471,37 +478,103 @@ export class Truck {
       box.add(liner);
     }
 
-    // Rear hopper: sloped loading section, then the tailgate.
-    const hopper = part(rbox(2.36, 2.2, 0.9, 0.09), M.bodyPaintDark);
-    hopper.position.set(0, 1.2, 0.52);
-    hopper.rotation.x = 0.06;
-    box.add(hopper);
-    const tailgate = part(rbox(2.1, 1.64, 0.16, 0.05), M.bodyPaint);
-    tailgate.position.set(0, 1.24, 0.04);
-    box.add(tailgate);
+    // --- Rear hopper -------------------------------------------------------
+    // Behind a chase camera the player looks at this face almost the entire
+    // time, and on a real refuse truck it is the most characteristic part of
+    // the vehicle: a deep recessed scoop with the packer visible inside,
+    // framed by hydraulic rams and conspicuity striping. It used to be a flat
+    // slab, which read as a shipping container rather than a truck.
+    const RZ = 0.06;          // outer face of the tailgate
+    const OPEN_HW = 0.88;     // half-width of the hopper opening
+    const OPEN_LO = 0.54;     // opening, bottom edge
+    const OPEN_HI = 1.72;     // opening, top edge
+    const DEPTH = 0.92;       // how far the hopper recedes into the body
 
-    // Tailgate rams.
+    // The notch spans the full width, so without these it would open straight
+    // out of both flanks. Filling the outer thirds leaves the hopper mouth.
     for (const side of [-1, 1]) {
-      const barrel = part(new THREE.CylinderGeometry(0.075, 0.075, 0.76, 12), M.darkMetal);
-      barrel.rotation.x = -0.5;
-      barrel.position.set(side * 0.96, 2.16, 0.62);
+      const filler = part(rbox(HW - OPEN_HW, OPEN_HI - OPEN_LO + 0.3, DEPTH + 0.1, 0.03), M.bodyPaint);
+      filler.position.set(side * (HW + OPEN_HW) / 2, (OPEN_LO + OPEN_HI) / 2, RZ + DEPTH / 2);
+      box.add(filler);
+      // Dark inner cheek, so the mouth reads as a recess. With flat shading
+      // there is no shadow to imply depth — only value does that work.
+      const cheek = part(rbox(0.06, OPEN_HI - OPEN_LO, DEPTH, 0.02), M.hopperDark, { cast: false });
+      cheek.position.set(side * (OPEN_HW - 0.03), (OPEN_LO + OPEN_HI) / 2, RZ + DEPTH / 2);
+      box.add(cheek);
+    }
+    // Darken the notch's back and roof, which the shell renders in body colour.
+    const backFace = part(rbox(OPEN_HW * 2, OPEN_HI - OPEN_LO, 0.06, 0.02), M.hopperDark, { cast: false });
+    backFace.position.set(0, (OPEN_LO + OPEN_HI) / 2, RZ + DEPTH - 0.04);
+    box.add(backFace);
+    const roofFace = part(rbox(OPEN_HW * 2, 0.06, DEPTH, 0.02), M.hopperDark, { cast: false });
+    roofFace.position.set(0, OPEN_HI - 0.02, RZ + DEPTH / 2);
+    box.add(roofFace);
+
+    // Scoop floor: slopes up and inward, the surface waste is raked along.
+    const scoop = part(rbox(OPEN_HW * 2, 0.12, DEPTH * 1.15, 0.03), M.hopperFloor, { cast: false });
+    scoop.position.set(0, OPEN_LO + 0.16, RZ + DEPTH * 0.55);
+    scoop.rotation.x = -0.36;
+    box.add(scoop);
+
+    // Packer blade angled across the mouth, with its rams.
+    const blade = part(rbox(OPEN_HW * 1.86, 0.5, 0.14, 0.03), M.metal, { cast: false });
+    blade.position.set(0, OPEN_HI - 0.42, RZ + DEPTH * 0.72);
+    blade.rotation.x = 0.5;
+    box.add(blade);
+    for (const side of [-1, 1]) {
+      const packRam = part(new THREE.CylinderGeometry(0.05, 0.05, 0.72, 10), M.hydraulic, { cast: false });
+      packRam.rotation.x = 0.62;
+      packRam.position.set(side * 0.5, OPEN_HI - 0.3, RZ + DEPTH * 0.5);
+      box.add(packRam);
+    }
+
+    // --- Tailgate frame around the opening ---
+    const topRail = part(rbox(W, 2.3 - OPEN_HI, 0.2, 0.05), M.bodyPaint);
+    topRail.position.set(0, (OPEN_HI + 2.3) / 2, RZ);
+    box.add(topRail);
+    for (const side of [-1, 1]) {
+      const hinge = part(new THREE.CylinderGeometry(0.07, 0.07, OPEN_HI - OPEN_LO + 0.3, 10), M.darkMetal);
+      hinge.position.set(side * (HW - 0.07), (OPEN_LO + OPEN_HI) / 2, RZ + 0.06);
+      box.add(hinge);
+    }
+    // Sill below the opening, angled like the real lip.
+    const sill = part(rbox(W, 0.46, 0.26, 0.05), M.bodyPaint);
+    sill.position.set(0, OPEN_LO - 0.18, RZ + 0.02);
+    sill.rotation.x = 0.16;
+    box.add(sill);
+
+    // Tailgate lift rams, outside the frame at the top corners.
+    for (const side of [-1, 1]) {
+      const barrel = part(new THREE.CylinderGeometry(0.075, 0.075, 0.8, 12), M.darkMetal);
+      barrel.rotation.x = -0.42;
+      barrel.position.set(side * 1.02, 2.2, 0.66);
       box.add(barrel);
-      const rod = part(new THREE.CylinderGeometry(0.038, 0.038, 0.7, 10), M.hydraulic);
-      rod.rotation.x = -0.5;
-      rod.position.set(side * 0.96, 1.88, 0.28);
+      const rod = part(new THREE.CylinderGeometry(0.038, 0.038, 0.74, 10), M.hydraulic);
+      rod.rotation.x = -0.42;
+      rod.position.set(side * 1.02, 1.92, 0.32);
       box.add(rod);
     }
 
-    const chevrons = part(new THREE.PlaneGeometry(2.0, 0.44), M.chevron, { cast: false });
-    chevrons.position.set(0, 0.5, -0.05);
-    box.add(chevrons);
-    const rearBumper = part(rbox(2.2, 0.24, 0.26, 0.06), M.bumper);
-    rearBumper.position.set(0, 0.12, -0.06);
-    box.add(rearBumper);
-    // Underrun bar, as required on a real refuse truck.
+    // Conspicuity striping above and below the opening, as the reference has.
+    for (const y of [2.24, OPEN_LO - 0.44]) {
+      for (let i = 0; i < 11; i++) {
+        const seg = part(rbox(0.19, 0.11, 0.05, 0.015),
+          i % 2 === 0 ? M.stripeRed : M.stripeWhite, { cast: false });
+        seg.position.set(-1.05 + i * 0.21, y, RZ - 0.1);
+        box.add(seg);
+      }
+    }
+
+    // Step bumper with the centre hydraulic pack.
+    const stepBar = part(rbox(2.24, 0.18, 0.42, 0.05), M.bumper);
+    stepBar.position.set(0, 0.14, RZ - 0.24);
+    box.add(stepBar);
+    const pack = part(rbox(0.56, 0.28, 0.3, 0.04), M.armPaint);
+    pack.position.set(0, 0.2, RZ - 0.3);
+    box.add(pack);
     for (const side of [-1, 1]) {
-      const stay = part(rbox(0.12, 0.4, 0.12, 0.03), M.darkMetal);
-      stay.position.set(side * 0.8, -0.1, 0.12);
+      const stay = part(rbox(0.12, 0.42, 0.12, 0.03), M.darkMetal);
+      stay.position.set(side * 0.82, -0.06, RZ - 0.1);
       box.add(stay);
     }
   }
@@ -686,20 +759,20 @@ export class Truck {
     this.rearIndicators = [];
     for (const side of [-1, 1]) {
       const housing = part(rbox(0.24, 0.8, 0.12, 0.04), M.trim);
-      housing.position.set(side * 0.9, 1.16, REAR_Z);
+      housing.position.set(side * 1.06, 1.02, REAR_Z);
       this.containerGroup.add(housing);
 
       const brake = part(rbox(0.17, 0.24, 0.06, 0.025), M.tail, { cast: false });
-      brake.position.set(side * 0.9, 1.42, REAR_Z - 0.07);
+      brake.position.set(side * 1.06, 1.28, REAR_Z - 0.07);
       this.containerGroup.add(brake);
 
       const ind = part(rbox(0.17, 0.17, 0.06, 0.025), M.indicator.clone(), { cast: false });
-      ind.position.set(side * 0.9, 1.16, REAR_Z - 0.07);
+      ind.position.set(side * 1.06, 1.02, REAR_Z - 0.07);
       this.containerGroup.add(ind);
       this.rearIndicators.push({ mesh: ind, side });
 
       const rev = part(rbox(0.17, 0.17, 0.06, 0.025), M.reverse, { cast: false });
-      rev.position.set(side * 0.9, 0.9, REAR_Z - 0.07);
+      rev.position.set(side * 1.06, 0.78, REAR_Z - 0.07);
       this.containerGroup.add(rev);
     }
 

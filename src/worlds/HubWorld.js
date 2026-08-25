@@ -125,9 +125,12 @@ export function buildHubWorld() {
   // Lighting for cel shading: mostly ambient so surfaces sit in the ramp's
   // upper band, with one soft directional to pick out which face is lit. A
   // strong key light would snap most faces to the dark band and read harsh.
-  group.add(new THREE.AmbientLight(0xffffff, 2.1));
-  group.add(new THREE.HemisphereLight(0xdcebf2, C.ground, 1.1));
-  const sun = new THREE.DirectionalLight(0xfff6e8, 1.05);
+  // Total incident light must land near 1.0. With tone mapping off, anything
+  // much above that clips dark colours toward white — which is why the hopper
+  // recess rendered pale instead of deep, and why the whole scene washed out.
+  group.add(new THREE.AmbientLight(0xffffff, 0.52));
+  group.add(new THREE.HemisphereLight(0xdcebf2, C.ground, 0.42));
+  const sun = new THREE.DirectionalLight(0xfff6e8, 0.55);
   sun.position.set(60, 90, 40);
   group.add(sun, sun.target);
 
