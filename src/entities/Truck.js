@@ -42,6 +42,7 @@ export class Truck {
   }
 
   _build() {
+    this.beacons = [];
     this._buildChassis();
     this._buildWheels();
     this._buildCab();
@@ -608,6 +609,112 @@ export class Truck {
       tail.add(rung);
     }
 
+    // --- Surface articulation ------------------------------------------------
+    // Large unbroken panels have nothing to give the eye a sense of scale, so
+    // they read as primitives however good the silhouette is. Seams, ribs,
+    // bolt rows and edge frames are what make a surface read as fabricated
+    // metal — this is most of the difference between "shapes" and "a truck".
+
+    // Heavy steel frame around the mouth. The single strongest addition: a cut
+    // edge reads as a hole, a framed edge reads as an opening in a structure.
+    const FR = 0.1;
+    for (const side of [-1, 1]) {           // jambs
+      const jamb = part(rbox(0.14, 1.34, 0.16, 0.03), M.darkMetal);
+      jamb.position.set(side * (MOUTH_HW + 0.04), 1.28, REAR + 0.06);
+      tail.add(jamb);
+    }
+    const header = part(rbox(MOUTH_HW * 2 + 0.3, 0.16, 0.18, 0.03), M.darkMetal);
+    header.position.set(0, 1.94, REAR + 0.1);
+    tail.add(header);
+    const threshold = part(rbox(MOUTH_HW * 2 + 0.3, 0.14, 0.2, 0.03), M.metal);
+    threshold.position.set(0, 0.66, REAR + 0.06);
+    tail.add(threshold);
+
+    // Rubber seal running the inside of the frame.
+    for (const side of [-1, 1]) {
+      const seal = part(rbox(0.05, 1.26, 0.06, 0.02), M.trim, { cast: false });
+      seal.position.set(side * (MOUTH_HW - 0.02), 1.28, REAR + 0.14);
+      tail.add(seal);
+    }
+
+    // Vertical ribs down the tail flanks, plus a horizontal seam.
+    for (const side of [-1, 1]) {
+      for (let i = 0; i < 4; i++) {
+        const rib = part(rbox(0.05, 1.5, 0.1, 0.02), M.bodyPaintDark);
+        rib.position.set(side * (THW + 0.01), 1.85, REAR + 0.5 + i * 0.3);
+        tail.add(rib);
+      }
+      const seam = part(rbox(0.06, 0.05, LEN * 0.92, 0.015), M.bodyPaintDark);
+      seam.position.set(side * (THW + 0.01), 1.06, REAR + LEN * 0.5);
+      tail.add(seam);
+      // Bolt row along the seam.
+      for (let i = 0; i < 6; i++) {
+        const bolt = part(new THREE.CylinderGeometry(0.03, 0.03, 0.04, 6), M.metal, { cast: false });
+        bolt.rotation.z = Math.PI / 2;
+        bolt.position.set(side * (THW + 0.03), 1.06, REAR + 0.22 + i * 0.22);
+        tail.add(bolt);
+      }
+      // Reflectors down the flank.
+      for (const [z, col] of [[REAR + 0.3, M.stripeRed], [REAR + 1.1, M.amber]]) {
+        const ref = part(rbox(0.04, 0.1, 0.2, 0.02), col, { cast: false });
+        ref.position.set(side * (THW + 0.03), 0.5, z);
+        tail.add(ref);
+      }
+      // Hydraulic hose pair running forward along the flank.
+      for (const [y, mat] of [[1.62, M.trim], [1.52, M.trim]]) {
+        const hose = part(new THREE.CylinderGeometry(0.025, 0.025, LEN * 0.8, 6), mat);
+        hose.rotation.x = Math.PI / 2;
+        hose.position.set(side * (THW - 0.02), y, REAR + LEN * 0.55);
+        tail.add(hose);
+      }
+      // Mudflap behind the rear wheels.
+      const flap = part(rbox(0.5, 0.44, 0.04, 0.02), M.trim, { cast: false });
+      flap.position.set(side * 0.95, 0.28, REAR + LEN + 0.02);
+      tail.add(flap);
+    }
+
+    // Bolt rows framing the mouth, following the header and threshold.
+    for (let i = 0; i < 9; i++) {
+      for (const y of [1.94, 0.66]) {
+        const bolt = part(new THREE.CylinderGeometry(0.028, 0.028, 0.05, 6), M.metal, { cast: false });
+        bolt.rotation.x = Math.PI / 2;
+        bolt.position.set(-0.88 + i * 0.22, y, REAR - 0.02);
+        tail.add(bolt);
+      }
+    }
+
+    // --- Inside the mouth ---
+    // A dark void reads as empty. Structure inside it reads as a mechanism.
+    for (const side of [-1, 1]) {
+      const rail = part(rbox(0.07, 0.09, 0.85, 0.02), M.metal, { cast: false });
+      rail.position.set(side * (MOUTH_HW - 0.12), 1.62, REAR + 0.5);
+      tail.add(rail);
+      const cyl = part(new THREE.CylinderGeometry(0.045, 0.045, 0.6, 8), M.hydraulic, { cast: false });
+      cyl.rotation.x = 0.5;
+      cyl.position.set(side * 0.42, 1.5, REAR + 0.6);
+      tail.add(cyl);
+    }
+    // Sweep panel below the blade.
+    const sweep = part(rbox(MOUTH_HW * 1.7, 0.34, 0.1, 0.02), M.hopperFloor, { cast: false });
+    sweep.position.set(0, 1.08, REAR + 0.78);
+    sweep.rotation.x = -0.5;
+    tail.add(sweep);
+
+    // Crown hardware: beacon mounts and a grab rail, as the references carry.
+    for (const side of [-1, 1]) {
+      const beaconPost = part(new THREE.CylinderGeometry(0.04, 0.04, 0.16, 6), M.darkMetal);
+      beaconPost.position.set(side * 0.62, 3.06, REAR + 1.18);
+      tail.add(beaconPost);
+      const beaconLens = part(new THREE.CylinderGeometry(0.07, 0.08, 0.13, 10), M.amber.clone(), { cast: false });
+      beaconLens.position.set(side * 0.62, 3.2, REAR + 1.18);
+      tail.add(beaconLens);
+      this.beacons.push(beaconLens);
+    }
+    const crownRail = part(new THREE.CylinderGeometry(0.03, 0.03, TW * 0.7, 8), M.chrome);
+    crownRail.rotation.z = Math.PI / 2;
+    crownRail.position.set(0, 2.9, REAR + 0.42);
+    tail.add(crownRail);
+
     // Step bumper and lamp clusters.
     const stepBar = part(rbox(TW * 0.94, 0.18, 0.4, 0.05), M.bumper);
     stepBar.position.set(0, 0.16, REAR - 0.2);
@@ -815,7 +922,6 @@ export class Truck {
     }
 
     // Amber beacon bar across the cab roof.
-    this.beacons = [];
     const beaconBar = part(rbox(1.6, 0.08, 0.18, 0.03), M.darkMetal);
     beaconBar.position.set(0, 2.12, 0.8);
     cab.add(beaconBar);
