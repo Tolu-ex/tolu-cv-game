@@ -73,7 +73,9 @@ export const PALETTE = {
     windmillCap: 0x6b4a35,
   },
   truck: {
-    cab: 0xc7ccd1,
+    // White cab against a green body, as every real refuse truck runs. A
+    // silver-grey cab blended into the bodywork and read as one muddy mass.
+    cab: 0xf2f4f5,
     cabDark: 0x9aa1a8,
     container: 0x8fd400,
     containerDark: 0x6fae00,

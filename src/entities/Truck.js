@@ -11,7 +11,7 @@ import { PALETTE } from '../utils/colors.js';
 const C = PALETTE.truck;
 
 // --- Layout constants (Z+ is forward) ---------------------------------------
-const WHEEL_R = 0.58;      // bigger wheels: the old ones under-filled the arches
+const WHEEL_R = 0.62;      // sized to fill the arches under the taller body
 const TRACK = 1.09;        // half-distance between left/right wheel centres
 const AXLE_FRONT = 2.46;
 const AXLE_REAR_A = -1.44;
@@ -222,7 +222,7 @@ export class Truck {
   _buildMaterials() {
     const decalTex = rovaDecalTexture();
     this.mats = {
-      cabPaint: paintMaterial(C.cab, { metalness: 0.6, roughness: 0.28 }),
+      cabPaint: paintMaterial(C.cab, { metalness: 0.15, roughness: 0.3 }),
       bodyPaint: paintMaterial(C.container, { metalness: 0.45, roughness: 0.38 }),
       bodyPaintDark: paintMaterial(C.containerDark, { metalness: 0.45, roughness: 0.42 }),
       chrome: chromeMaterial(),
@@ -233,10 +233,16 @@ export class Truck {
       bumper: plasticMaterial(0x2e3237, { roughness: 0.6 }),
       trim: plasticMaterial(0x1c1f23, { roughness: 0.75 }),
       hydraulic: chromeMaterial(0xd8dde2, { roughness: 0.05 }),
+      armPaint: paintMaterial(C.arm, { metalness: 0.25, roughness: 0.45 }),
       amber: lensMaterial(0xffa71a, 1.1),
       chargeLamp: lensMaterial(0x4dffa8, 1.6),
       indicator: lensMaterial(0xff8c1a, 0.12),
       arch: plasticMaterial(0x15181c, { roughness: 0.95 }),
+      rim: new THREE.MeshStandardMaterial({
+        color: 0xe4e9ee, metalness: 0.45, roughness: 0.3, envMapIntensity: 1.2,
+      }),
+      stripeRed: reflectiveMaterial(0xd42a1a),
+      stripeWhite: reflectiveMaterial(0xf2f2f2),
       drl: lensMaterial(0xdfefff, 1.5),
       headlight: lensMaterial(0xfff6de, 1.0),
       tail: lensMaterial(0xff2a1f, 0.55),
@@ -334,7 +340,7 @@ export class Truck {
       const tyre = part(tyreGeo, M.rubber);
       tyre.scale.x = flip;
       spinner.add(tyre);
-      const rim = part(rimGeo, M.metal);
+      const rim = part(rimGeo, M.rim);
       rim.scale.x = flip;
       spinner.add(rim);
 
@@ -378,31 +384,30 @@ export class Truck {
   _buildCab() {
     const M = this.mats;
     const cab = new THREE.Group();
-    const CAB_Z = 1.34;   // cab rear plane, world Z
+    const CAB_Z = 1.40;   // cab rear plane, world Z
     const CAB_Y = 0.82;   // cab floor, world Y
     const CAB_W = 2.42;
     cab.position.set(0, CAB_Y, CAB_Z);
     this.body.add(cab);
     this.cab = cab;
-    this.cabDims = { CAB_Z, CAB_Y, CAB_W, len: 2.24 };
+    this.cabDims = { CAB_Z, CAB_Y, CAB_W, len: 1.95 };
 
     // Profile coords: u forward from the cab's rear plane, v up from the floor.
     const p = new THREE.Shape();
-    // Front axle sits at world 2.46, i.e. u = 2.46 - CAB_Z = 1.12.
-    const fArch = 1.12, fArchR = 0.62;
+    // Front axle sits at world 2.46, i.e. u = 2.46 - CAB_Z = 1.06.
+    const fArch = 1.06, fArchR = 0.62;
     p.moveTo(0, 0.04);
     p.lineTo(fArch - fArchR, 0.04);
     p.absarc(fArch, 0.04, fArchR, Math.PI, 0, true);  // front wheel arch
-    p.lineTo(2.06, 0.04);
-    p.quadraticCurveTo(2.18, 0.06, 2.2, 0.28);
-    p.lineTo(2.2, 0.44);                       // lower fascia
-    p.lineTo(2.24, 1.02);                      // grille face, slight forward lean
-    p.quadraticCurveTo(2.25, 1.28, 2.13, 1.46); // cowl radius into the screen
-    p.lineTo(1.9, 2.06);                       // raked windscreen
-    p.quadraticCurveTo(1.84, 2.22, 1.62, 2.25); // roof front radius
-    p.lineTo(0.42, 2.25);                      // roof
-    p.quadraticCurveTo(0.16, 2.25, 0.1, 2.06); // roof rear radius
-    p.lineTo(0.02, 1.3);
+    p.lineTo(1.78, 0.04);
+    p.quadraticCurveTo(1.90, 0.06, 1.92, 0.26);
+    p.lineTo(1.94, 0.9);                       // flat, upright front face
+    p.quadraticCurveTo(1.96, 1.05, 1.91, 1.14); // cowl radius into the screen
+    p.lineTo(1.85, 2.0);                       // windscreen, near-vertical
+    p.quadraticCurveTo(1.82, 2.07, 1.62, 2.09); // roof front radius
+    p.lineTo(0.36, 2.09);                      // roof
+    p.quadraticCurveTo(0.10, 2.09, 0.06, 1.90); // roof rear radius
+    p.lineTo(0.02, 1.2);
     p.lineTo(0, 0.04);
     p.closePath();
 
@@ -413,12 +418,12 @@ export class Truck {
     // Greenhouse taper: a slightly narrower cap over the glass band makes the
     // roof read as tapered instead of slab-sided.
     const capShape = new THREE.Shape();
-    capShape.moveTo(0.16, 1.62);
-    capShape.lineTo(1.98, 1.62);
-    capShape.lineTo(1.9, 2.06);
-    capShape.quadraticCurveTo(1.84, 2.22, 1.62, 2.25);
-    capShape.lineTo(0.42, 2.25);
-    capShape.quadraticCurveTo(0.16, 2.25, 0.1, 2.06);
+    capShape.moveTo(0.12, 1.5);
+    capShape.lineTo(1.88, 1.5);
+    capShape.lineTo(1.85, 1.96);
+    capShape.quadraticCurveTo(1.81, 2.06, 1.62, 2.09);
+    capShape.lineTo(0.36, 2.09);
+    capShape.quadraticCurveTo(0.10, 2.09, 0.06, 1.90);
     capShape.closePath();
     const cap = part(extrudeProfile(capShape, CAB_W - 0.1), M.cabPaint);
     cap.position.y = 0.005;
@@ -427,25 +432,25 @@ export class Truck {
     // --- Glazing -----------------------------------------------------------
     // Interior first: glass with nothing behind it reads as a hole.
     const cabin = part(rbox(2.06, 0.86, 1.24, 0.06), M.trim, { cast: false });
-    cabin.position.set(0, 1.72, 1.12);
+    cabin.position.set(0, 1.62, 0.98);
     cab.add(cabin);
     const dash = part(rbox(2.0, 0.2, 0.44, 0.05), M.trim, { cast: false });
-    dash.position.set(0, 1.5, 1.74);
+    dash.position.set(0, 1.42, 1.5);
     cab.add(dash);
     for (const sx of [-0.54, 0.54]) {
       const seat = part(rbox(0.46, 0.54, 0.44, 0.09), M.trim, { cast: false });
-      seat.position.set(sx, 1.52, 1.2);
+      seat.position.set(sx, 1.44, 1.04);
       cab.add(seat);
     }
     const steer = part(new THREE.TorusGeometry(0.18, 0.03, 8, 20), M.trim, { cast: false });
-    steer.position.set(-0.54, 1.66, 1.6);
+    steer.position.set(-0.54, 1.56, 1.38);
     steer.rotation.x = 1.2;
     cab.add(steer);
 
     // Windscreen laid on the raked face, angle taken from the profile so the
     // glass and the surface agree rather than being eyeballed.
-    const wsA = new THREE.Vector2(2.13, 1.46);
-    const wsB = new THREE.Vector2(1.9, 2.06);
+    const wsA = new THREE.Vector2(1.91, 1.14);
+    const wsB = new THREE.Vector2(1.85, 2.0);
     const wsMid = wsA.clone().add(wsB).multiplyScalar(0.5);
     const wsLen = wsA.distanceTo(wsB);
     const wsRake = Math.atan2(wsA.x - wsB.x, wsB.y - wsA.y); // from vertical
@@ -460,7 +465,7 @@ export class Truck {
     cab.add(surround);
     for (const sx of [-0.5, 0.44]) {
       const wiper = part(rbox(0.7, 0.03, 0.03, 0.012), M.trim, { cast: false });
-      wiper.position.set(sx, wsMid.y - wsLen * 0.36, wsMid.x + 0.09);
+      wiper.position.set(sx, wsMid.y - wsLen * 0.38, wsMid.x + 0.08);
       wiper.rotation.z = 0.15;
       wiper.rotation.x = -wsRake;
       cab.add(wiper);
@@ -470,54 +475,54 @@ export class Truck {
     for (const side of [-1, 1]) {
       // Door aperture: a shaped opening, not a rectangle stuck on the flank.
       const doorGlass = part(rbox(0.05, 0.6, 1.02, 0.03), M.glass, { cast: false });
-      doorGlass.position.set(side * (HW - 0.03), 1.74, 1.06);
+      doorGlass.position.set(side * (HW - 0.03), 1.66, 0.92);
       cab.add(doorGlass);
       // Quarter-light ahead of the door, angled to follow the A-pillar.
       const quarter = part(rbox(0.05, 0.44, 0.26, 0.02), M.glass, { cast: false });
-      quarter.position.set(side * (HW - 0.03), 1.66, 1.74);
+      quarter.position.set(side * (HW - 0.03), 1.62, 1.52);
       quarter.rotation.x = 0.3;
       cab.add(quarter);
 
       // Character line: one crease running the cab's length, picked up again on
       // the body so the eye reads a single vehicle.
-      const crease = part(rbox(0.045, 0.07, 2.0, 0.02), M.cabPaint);
-      crease.position.set(side * (HW + 0.005), 1.16, 1.16);
+      const crease = part(rbox(0.045, 0.07, 1.7, 0.02), M.cabPaint);
+      crease.position.set(side * (HW + 0.005), 1.16, 1.0);
       cab.add(crease);
 
       const shut = part(rbox(0.025, 1.5, 0.035, 0.01), M.trim);
-      shut.position.set(side * (HW + 0.01), 1.0, 0.52);
+      shut.position.set(side * (HW + 0.01), 0.95, 0.42);
       cab.add(shut);
       const handle = part(rbox(0.055, 0.07, 0.26, 0.025), M.chrome);
-      handle.position.set(side * (HW + 0.02), 1.28, 0.94);
+      handle.position.set(side * (HW + 0.02), 1.22, 0.8);
       cab.add(handle);
       const grab = part(new THREE.CylinderGeometry(0.026, 0.026, 0.94, 8), M.chrome);
-      grab.position.set(side * (HW + 0.01), 1.06, 1.62);
+      grab.position.set(side * (HW + 0.01), 1.0, 1.42);
       cab.add(grab);
 
       // Steps recessed into the sill rather than bolted underneath.
       const stepBox = part(rbox(0.42, 0.62, 0.5, 0.05), M.trim, { cast: false });
-      stepBox.position.set(side * (HW - 0.16), -0.02, 1.1);
+      stepBox.position.set(side * (HW - 0.16), -0.02, 0.94);
       cab.add(stepBox);
       for (const [i, v] of [0.08, -0.24].entries()) {
         const tread = part(rbox(0.44, 0.06, 0.4, 0.02), M.darkMetal);
-        tread.position.set(side * (HW - 0.14), v, 1.1 - i * 0.03);
+        tread.position.set(side * (HW - 0.14), v, 0.94 - i * 0.03);
         cab.add(tread);
       }
 
       // Mirror: twin-stalk arm at screen height.
       const stalkU = part(new THREE.CylinderGeometry(0.022, 0.022, 0.26, 8), M.darkMetal);
       stalkU.rotation.z = Math.PI / 2;
-      stalkU.position.set(side * (HW + 0.12), 2.02, 1.86);
+      stalkU.position.set(side * (HW + 0.12), 1.9, 1.62);
       cab.add(stalkU);
       const stalkL = part(new THREE.CylinderGeometry(0.022, 0.022, 0.26, 8), M.darkMetal);
       stalkL.rotation.z = Math.PI / 2;
-      stalkL.position.set(side * (HW + 0.12), 1.6, 1.86);
+      stalkL.position.set(side * (HW + 0.12), 1.5, 1.62);
       cab.add(stalkL);
       const mirrorBody = part(rbox(0.075, 0.62, 0.2, 0.045), M.trim);
-      mirrorBody.position.set(side * (HW + 0.25), 1.82, 1.86);
+      mirrorBody.position.set(side * (HW + 0.25), 1.7, 1.62);
       cab.add(mirrorBody);
       const mirrorGlass = part(rbox(0.02, 0.54, 0.15, 0.01), M.chrome, { cast: false });
-      mirrorGlass.position.set(side * (HW + 0.29), 1.82, 1.86);
+      mirrorGlass.position.set(side * (HW + 0.29), 1.7, 1.62);
       cab.add(mirrorGlass);
     }
 
@@ -532,61 +537,61 @@ export class Truck {
     // --- Front fascia ------------------------------------------------------
     // Grille as a shaped identity element, inset into the front face.
     const grilleSurround = part(rbox(2.1, 0.82, 0.1, 0.05), M.cabPaint);
-    grilleSurround.position.set(0, 0.94, 2.22);
+    grilleSurround.position.set(0, 0.88, 1.92);
     cab.add(grilleSurround);
     const grilleWell = part(rbox(1.88, 0.68, 0.08, 0.03), M.trim);
-    grilleWell.position.set(0, 0.94, 2.26);
+    grilleWell.position.set(0, 0.88, 1.96);
     cab.add(grilleWell);
     for (let i = 0; i < 3; i++) {
       const slat = part(rbox(1.76, 0.1, 0.06, 0.025), M.darkMetal);
-      slat.position.set(0, 0.74 + i * 0.2, 2.29);
+      slat.position.set(0, 0.7 + i * 0.19, 1.99);
       cab.add(slat);
     }
     const badge = part(new THREE.PlaneGeometry(0.68, 0.29), M.decal, { cast: false, receive: false });
-    badge.position.set(0, 1.32, 2.27);
+    badge.position.set(0, 1.24, 1.97);
     cab.add(badge);
 
     // Bumper wrapping into the corners, with a valance under it.
     const bumper = part(rbox(2.46, 0.42, 0.42, 0.1), M.bumper);
-    bumper.position.set(0, 0.3, 2.2);
+    bumper.position.set(0, 0.3, 1.92);
     cab.add(bumper);
     for (const side of [-1, 1]) {
       const corner = part(rbox(0.3, 0.5, 0.5, 0.12), M.bumper);
-      corner.position.set(side * 1.12, 0.32, 2.06);
+      corner.position.set(side * 1.12, 0.32, 1.8);
       cab.add(corner);
     }
     const valance = part(rbox(2.0, 0.18, 0.3, 0.06), M.trim);
-    valance.position.set(0, 0.05, 2.16);
+    valance.position.set(0, 0.05, 1.9);
     cab.add(valance);
     const plate = part(new THREE.PlaneGeometry(0.5, 0.14), M.plate, { cast: false });
-    plate.position.set(0.58, 0.3, 2.42);
+    plate.position.set(0.58, 0.3, 2.14);
     cab.add(plate);
 
     // Roof: visor integrated into the crown, plus marker lamps.
     const visor = part(rbox(2.36, 0.09, 0.34, 0.04), M.cabPaint);
-    visor.position.set(0, 2.26, 2.02);
+    visor.position.set(0, 2.1, 1.78);
     visor.rotation.x = 0.26;
     cab.add(visor);
 
     this.markerLamps = [];
     for (const x of [-0.84, -0.3, 0.3, 0.84]) {
       const lamp = part(rbox(0.15, 0.06, 0.1, 0.02), M.amber, { cast: false });
-      lamp.position.set(x, 2.28, 1.92);
+      lamp.position.set(x, 2.12, 1.68);
       cab.add(lamp);
       this.markerLamps.push(lamp);
     }
 
     // Charge port where a diesel would carry its stack.
     const portFlap = part(rbox(0.06, 0.34, 0.4, 0.03), M.cabPaint);
-    portFlap.position.set(-(HW + 0.01), 0.86, 0.5);
+    portFlap.position.set(-(HW + 0.01), 0.86, 0.42);
     cab.add(portFlap);
     const portRing = part(new THREE.CylinderGeometry(0.1, 0.1, 0.05, 14), M.darkMetal);
     portRing.rotation.z = Math.PI / 2;
-    portRing.position.set(-(HW + 0.05), 0.86, 0.5);
+    portRing.position.set(-(HW + 0.05), 0.86, 0.42);
     cab.add(portRing);
     const portGlow = part(new THREE.CylinderGeometry(0.05, 0.05, 0.06, 12), M.chargeLamp, { cast: false });
     portGlow.rotation.z = Math.PI / 2;
-    portGlow.position.set(-(HW + 0.07), 0.86, 0.5);
+    portGlow.position.set(-(HW + 0.07), 0.86, 0.42);
     cab.add(portGlow);
     this.chargePortLamp = portGlow;
   }
@@ -624,11 +629,14 @@ export class Truck {
     p2.absarc(0.76, 0.05, archR, Math.PI, 0, true);
     p2.lineTo(2.06 - archR, 0.05);
     p2.absarc(2.06, 0.05, archR, Math.PI, 0, true);
-    p2.lineTo(4.62, 0.05);                     // forward, toward the cab
-    p2.lineTo(4.62, 2.02);
-    p2.quadraticCurveTo(4.62, 2.2, 4.44, 2.22); // front roof radius
-    p2.lineTo(0.36, 2.22);                     // roof
-    p2.quadraticCurveTo(0.06, 2.22, 0.02, 1.98); // rear roof radius
+    p2.lineTo(4.85, 0.05);                     // forward, up against the cab
+    // The body stands well proud of the cab roof — on a real refuse truck the
+    // hopper towers over the driver, and matching their heights was the single
+    // biggest reason the old shape read wrong.
+    p2.lineTo(4.85, 2.46);
+    p2.quadraticCurveTo(4.85, 2.64, 4.64, 2.66); // front roof radius
+    p2.lineTo(0.36, 2.66);                     // roof
+    p2.quadraticCurveTo(0.06, 2.66, 0.02, 2.4); // rear roof radius
     p2.lineTo(0, 0.3);
     p2.closePath();
 
@@ -640,32 +648,41 @@ export class Truck {
 
       // Character line continued from the cab at the same height, which is
       // what makes cab and body read as one vehicle instead of two objects.
-      const crease = part(rbox(0.05, 0.08, 4.3, 0.025), M.bodyPaintDark);
-      crease.position.set(x, 1.14, 2.4);
+      const crease = part(rbox(0.05, 0.08, 4.5, 0.025), M.bodyPaintDark);
+      crease.position.set(x, 1.14, 2.5);
       box.add(crease);
 
       // Ribbed pressings above the crease, on the rear half only.
       for (let i = 0; i < 5; i++) {
-        const rib = part(rbox(0.06, 0.78, 0.11, 0.025), M.bodyPaintDark);
-        rib.position.set(x, 1.62, 0.72 + i * 0.44);
+        const rib = part(rbox(0.06, 1.1, 0.11, 0.025), M.bodyPaintDark);
+        rib.position.set(x, 1.86, 0.72 + i * 0.46);
         box.add(rib);
       }
 
       // Livery panel on the front half, proud of the surface.
-      const panel = part(rbox(0.05, 1.4, 1.9, 0.04), M.bodyPaint);
-      panel.position.set(x, 1.5, 3.4);
+      const panel = part(rbox(0.05, 1.6, 2.1, 0.04), M.bodyPaint);
+      panel.position.set(x, 1.72, 3.5);
       box.add(panel);
-      const decal = part(new THREE.PlaneGeometry(1.7, 0.72), M.decal, { cast: false, receive: false });
-      decal.position.set(side * (HW + 0.045), 1.54, 3.4);
+      const decal = part(new THREE.PlaneGeometry(1.86, 0.8), M.decal, { cast: false, receive: false });
+      decal.position.set(side * (HW + 0.045), 1.76, 3.5);
       decal.rotation.y = side * Math.PI / 2;
       box.add(decal);
 
+      // Conspicuity striping along the lower flank, as required on a real
+      // refuse truck and clearly visible in the reference photos.
+      for (let i = 0; i < 9; i++) {
+        const seg = part(rbox(0.045, 0.12, 0.34, 0.015),
+          i % 2 === 0 ? M.stripeRed : M.stripeWhite, { cast: false });
+        seg.position.set(x, 0.78, 0.5 + i * 0.36);
+        box.add(seg);
+      }
+
       // Top rail and a sill that follows the arches.
-      const rail = part(rbox(0.13, 0.15, 4.4, 0.035), M.metal);
-      rail.position.set(side * HW, 2.16, 2.3);
+      const rail = part(rbox(0.13, 0.15, 4.6, 0.035), M.metal);
+      rail.position.set(side * HW, 2.6, 2.4);
       box.add(rail);
       const sill = part(rbox(0.1, 0.2, 1.1, 0.03), M.bodyPaintDark);
-      sill.position.set(side * HW, 0.14, 3.9);
+      sill.position.set(side * HW, 0.14, 4.1);
       box.add(sill);
     }
 
@@ -681,23 +698,23 @@ export class Truck {
     }
 
     // Rear hopper: sloped loading section, then the tailgate.
-    const hopper = part(rbox(2.36, 1.8, 0.9, 0.09), M.bodyPaintDark);
-    hopper.position.set(0, 1.0, 0.52);
+    const hopper = part(rbox(2.36, 2.2, 0.9, 0.09), M.bodyPaintDark);
+    hopper.position.set(0, 1.2, 0.52);
     hopper.rotation.x = 0.06;
     box.add(hopper);
-    const tailgate = part(rbox(2.1, 1.36, 0.16, 0.05), M.bodyPaint);
-    tailgate.position.set(0, 1.1, 0.04);
+    const tailgate = part(rbox(2.1, 1.64, 0.16, 0.05), M.bodyPaint);
+    tailgate.position.set(0, 1.24, 0.04);
     box.add(tailgate);
 
     // Tailgate rams.
     for (const side of [-1, 1]) {
       const barrel = part(new THREE.CylinderGeometry(0.075, 0.075, 0.76, 12), M.darkMetal);
       barrel.rotation.x = -0.5;
-      barrel.position.set(side * 0.96, 1.8, 0.62);
+      barrel.position.set(side * 0.96, 2.16, 0.62);
       box.add(barrel);
       const rod = part(new THREE.CylinderGeometry(0.038, 0.038, 0.7, 10), M.hydraulic);
       rod.rotation.x = -0.5;
-      rod.position.set(side * 0.96, 1.52, 0.28);
+      rod.position.set(side * 0.96, 1.88, 0.28);
       box.add(rod);
     }
 
@@ -724,27 +741,27 @@ export class Truck {
     const HW = this.containerHalfWidth;
 
     const base = new THREE.Group();
-    base.position.set(HW + 0.09, 0.95, 0.72);
+    base.position.set(HW + 0.09, 0.95, 0.86);
     this.body.add(base);
     this.armBase = base;
 
     // Mast bolted to the body's front corner.
-    const mast = part(rbox(0.22, 1.55, 0.34, 0.05), M.darkMetal);
-    mast.position.y = 0.78;
+    const mast = part(rbox(0.3, 1.72, 0.46, 0.06), M.armPaint);
+    mast.position.y = 0.86;
     base.add(mast);
-    const mastFoot = part(rbox(0.3, 0.14, 0.44, 0.04), M.metal);
+    const mastFoot = part(rbox(0.38, 0.16, 0.56, 0.04), M.darkMetal);
     base.add(mastFoot);
-    const mastCap = part(rbox(0.28, 0.12, 0.4, 0.04), M.metal);
-    mastCap.position.y = 1.58;
+    const mastCap = part(rbox(0.36, 0.14, 0.52, 0.04), M.darkMetal);
+    mastCap.position.y = 1.76;
     base.add(mastCap);
 
     // Boom folded up alongside the mast, carried on a pivot at the foot.
     const boom = new THREE.Group();
-    boom.position.set(0.2, 0.2, 0);
+    boom.position.set(0.26, 0.2, 0);
     base.add(boom);
 
-    const boomArm = part(rbox(0.15, 1.35, 0.24, 0.04), M.bodyPaintDark);
-    boomArm.position.y = 0.66;
+    const boomArm = part(rbox(0.22, 1.5, 0.32, 0.05), M.armPaint);
+    boomArm.position.y = 0.74;
     boom.add(boomArm);
 
     // Hydraulic ram: barrel low, bright rod extending up out of it.
@@ -761,9 +778,9 @@ export class Truck {
 
     // Grabber head at the top of the folded boom, jaws hanging down.
     const grabber = new THREE.Group();
-    grabber.position.set(0, 1.34, 0);
+    grabber.position.set(0, 1.5, 0);
     boom.add(grabber);
-    const carrier = part(rbox(0.28, 0.16, 0.34, 0.04), M.darkMetal);
+    const carrier = part(rbox(0.36, 0.2, 0.42, 0.05), M.armPaint);
     grabber.add(carrier);
 
     this.grabberArms = [];
@@ -796,22 +813,22 @@ export class Truck {
     this.frontIndicators = [];
     for (const side of [-1, 1]) {
       const housing = part(rbox(0.5, 0.34, 0.16, 0.05), M.trim);
-      housing.position.set(side * 0.86, 0.62, 2.24);
+      housing.position.set(side * 0.86, 0.56, 1.94);
       cab.add(housing);
       const lens = part(rbox(0.42, 0.26, 0.07, 0.03), M.headlight, { cast: false });
-      lens.position.set(side * 0.86, 0.62, 2.32);
+      lens.position.set(side * 0.86, 0.56, 2.02);
       cab.add(lens);
       this.headlampLenses.push(lens);
 
       // Separate indicator lens beside each headlamp.
       const ind = part(rbox(0.16, 0.2, 0.06, 0.025), M.indicator.clone(), { cast: false });
-      ind.position.set(side * 1.12, 0.62, 2.28);
+      ind.position.set(side * 1.12, 0.56, 1.98);
       cab.add(ind);
       this.frontIndicators.push({ mesh: ind, side });
 
       // DRL strip along the top of the cluster.
       const drl = part(rbox(0.4, 0.05, 0.05, 0.02), M.drl, { cast: false });
-      drl.position.set(side * 0.86, 0.79, 2.33);
+      drl.position.set(side * 0.86, 0.73, 2.03);
       cab.add(drl);
     }
 
@@ -819,7 +836,7 @@ export class Truck {
     this.sideIndicators = [];
     for (const side of [-1, 1]) {
       const rep = part(rbox(0.05, 0.09, 0.22, 0.02), M.indicator.clone(), { cast: false });
-      rep.position.set(side * (HW + 0.02), 1.16, 0.36);
+      rep.position.set(side * (HW + 0.02), 1.16, 0.3);
       cab.add(rep);
       this.sideIndicators.push({ mesh: rep, side });
     }
@@ -830,32 +847,32 @@ export class Truck {
     this.rearIndicators = [];
     for (const side of [-1, 1]) {
       const housing = part(rbox(0.24, 0.8, 0.12, 0.04), M.trim);
-      housing.position.set(side * 0.9, 1.12, REAR_Z);
+      housing.position.set(side * 0.9, 1.16, REAR_Z);
       this.containerGroup.add(housing);
 
       const brake = part(rbox(0.17, 0.24, 0.06, 0.025), M.tail, { cast: false });
-      brake.position.set(side * 0.9, 1.38, REAR_Z - 0.07);
+      brake.position.set(side * 0.9, 1.42, REAR_Z - 0.07);
       this.containerGroup.add(brake);
       this.brakeLenses.push(brake);
 
       const ind = part(rbox(0.17, 0.17, 0.06, 0.025), M.indicator.clone(), { cast: false });
-      ind.position.set(side * 0.9, 1.12, REAR_Z - 0.07);
+      ind.position.set(side * 0.9, 1.16, REAR_Z - 0.07);
       this.containerGroup.add(ind);
       this.rearIndicators.push({ mesh: ind, side });
 
       const rev = part(rbox(0.17, 0.17, 0.06, 0.025), M.reverse, { cast: false });
-      rev.position.set(side * 0.9, 0.88, REAR_Z - 0.07);
+      rev.position.set(side * 0.9, 0.9, REAR_Z - 0.07);
       this.containerGroup.add(rev);
     }
 
     // Amber beacon bar across the cab roof.
     this.beacons = [];
     const beaconBar = part(rbox(1.6, 0.08, 0.18, 0.03), M.darkMetal);
-    beaconBar.position.set(0, 2.28, 0.9);
+    beaconBar.position.set(0, 2.12, 0.8);
     cab.add(beaconBar);
     for (const side of [-1, 1]) {
       const beacon = part(new THREE.CylinderGeometry(0.08, 0.09, 0.16, 12), M.amber.clone(), { cast: false });
-      beacon.position.set(side * 0.64, 2.38, 0.9);
+      beacon.position.set(side * 0.64, 2.22, 0.8);
       cab.add(beacon);
       this.beacons.push(beacon);
     }
@@ -869,7 +886,7 @@ export class Truck {
     this.headlights = [];
     for (const side of [-1, 1]) {
       const spot = new THREE.SpotLight(0xfff2c9, 0, 30, Math.PI / 5.5, 0.45, 1.1);
-      spot.position.set(side * 0.86, 1.44, 3.4);
+      spot.position.set(side * 0.86, 1.3, 3.2);
       const target = new THREE.Object3D();
       target.position.set(side * 0.98, 0, 16);
       this.group.add(target);

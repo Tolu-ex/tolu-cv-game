@@ -57,6 +57,13 @@ Transmission renders whatever is behind the pane, and behind a game-truck
 windscreen there is very little — so the glass goes black and reads as a hole.
 A bright, strongly-reflective surface sells "glass" far better at this scale.
 
+**Proportion.** Modelled on real refuse trucks: a **short, tall cab-over with a
+near-vertical glasshouse**, and a body that stands well **proud of the cab
+roof**. Matching cab and body heights — and making the cab long and raked like
+a car — was the single biggest reason an earlier version looked wrong. White
+cab against a green body, too; a silver-grey cab blended into the bodywork and
+read as one muddy mass.
+
 **Surfaces.** The cab and body are **extruded side profiles**, not stacked
 boxes. A profile carries the whole silhouette in one surface — raked screen
 flowing into a curved roof, wheel arches cut into the lower edge, a character
