@@ -1,10 +1,10 @@
 # ROVA CV Drive 🚛
 
-A 3D driving game built with **Three.js + Vite**. Hop in a detailed, low-poly
-ROVA electric refuse truck (DAF-style silver-grey cab, lime-green compactor
-body, robotic side-loading arm) and roam a green nature world. Drive through any of
-the six glowing portal archways to teleport into a chapter of Toluwalase
-Awobusuyi's CV, complete with a story card and a fade transition.
+A 3D driving game built with **Three.js + Vite**. You run a refuse round in a
+ROVA electric collection truck — white cab, green body, hydraulic side-loading
+arm — emptying wheelie bins along the kerb and tipping out at the depot. Six
+worlds, reached through glowing portal archways, each drawn from a chapter of
+Toluwalase Awobusuyi's CV.
 
 ## 🌍 The six worlds
 
@@ -116,6 +116,31 @@ drivetrain is dead still, and that stillness is part of how an EV reads. Tyre
 dust stays, since rubber on a dry surface throws grit whatever turns the
 wheels.
 
+## 🎯 The collection round
+
+The game is a refuse round. Bins are set out along the kerbs of every world;
+drive so the truck's **kerb side** passes one and the hydraulic arm swings out,
+grabs it and tips it into the hopper.
+
+The hopper holds **6 bins**. Once it is full you stop collecting and have to
+drive back to the **depot** (the glowing pad, which only appears once you are
+carrying something) to tip out. That capacity limit is the whole design: without
+it you would simply hoover up every bin in one pass, and there would be no
+decision to make. With it, every run is a choice between pushing on to the far
+bins or banking what you already have.
+
+- **100 pts** per bin, plus a **50 pt per-bin bonus** for banking a load at the depot
+- Collection needs you under ~11 km/h — you have to actually slow down for the kerb
+- Which side you work follows real practice: driving one way you service the
+  right-hand kerb, driving back you service the other. The arm is mounted on the
+  right, as a Dutch truck's is.
+
+Bins carry the four Dutch waste streams as a colour scheme — restafval, GFT,
+papier and PMD. [`Bin.js`](src/entities/Bin.js) owns its own lift-and-tip
+animation so several can be mid-cycle without the truck tracking state per bin;
+[`RoundManager.js`](src/core/RoundManager.js) owns score, load, the depot and
+the pickup test.
+
 ## 🧭 Minimap
 
 A GTA-style rotating radar sits in the bottom-right. The map turns with the
@@ -137,12 +162,14 @@ top-down view — clouds, starfields — is flagged `userData.excludeFromMap`.
 src/
   core/            Game orchestration, camera, input, fade transition
     Game.js
+    RoundManager.js
     ChaseCamera.js
     InputController.js
     FadeTransition.js
-  entities/        The truck, its effects, + portal archways
+  entities/        The truck, its effects, bins + portal archways
     Truck.js
     TruckFX.js
+    Bin.js
     Portal.js
   worlds/          One builder function per world (returns a THREE.Group + metadata)
     HubWorld.js

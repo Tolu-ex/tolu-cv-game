@@ -741,9 +741,12 @@ export class Truck {
     const HW = this.containerHalfWidth;
 
     const base = new THREE.Group();
-    base.position.set(HW + 0.09, 0.95, 0.86);
+    // Kerb side: NL drives on the right, so the arm works the right-hand kerb
+    // (-X is the truck's right when heading 0 faces +Z).
+    base.position.set(-(HW + 0.09), 0.95, 0.86);
     this.body.add(base);
     this.armBase = base;
+    this._armHomeX = base.position.x;
 
     // Mast bolted to the body's front corner.
     const mast = part(rbox(0.3, 1.72, 0.46, 0.06), M.armPaint);
@@ -757,7 +760,7 @@ export class Truck {
 
     // Boom folded up alongside the mast, carried on a pivot at the foot.
     const boom = new THREE.Group();
-    boom.position.set(0.26, 0.2, 0);
+    boom.position.set(-0.26, 0.2, 0);
     base.add(boom);
 
     const boomArm = part(rbox(0.22, 1.5, 0.32, 0.05), M.armPaint);
@@ -766,10 +769,10 @@ export class Truck {
 
     // Hydraulic ram: barrel low, bright rod extending up out of it.
     const ramBarrel = part(new THREE.CylinderGeometry(0.058, 0.058, 0.62, 12), M.darkMetal);
-    ramBarrel.position.set(0.15, 0.36, 0);
+    ramBarrel.position.set(-0.15, 0.36, 0);
     boom.add(ramBarrel);
     const ramRod = part(new THREE.CylinderGeometry(0.03, 0.03, 0.6, 10), M.hydraulic);
-    ramRod.position.set(0.15, 0.92, 0);
+    ramRod.position.set(-0.15, 0.92, 0);
     boom.add(ramRod);
 
     const pin = part(new THREE.CylinderGeometry(0.07, 0.07, 0.32, 12), M.hydraulic);
@@ -800,6 +803,71 @@ export class Truck {
 
     this.armBoom = boom;
     this.armGrabber = grabber;
+
+    // Arm cycle state. `armPhase` runs 0 -> 1 through reach / lift / stow.
+    this.armState = 'idle';
+    this.armPhase = 0;
+  }
+
+  /** Called by the round manager when a bin comes into reach. */
+  playArmCycle() {
+    if (this.armState !== 'idle') return false;
+    this.armState = 'reach';
+    this.armPhase = 0;
+    return true;
+  }
+
+  get armBusy() { return this.armState !== 'idle'; }
+
+  /**
+   * Drives the arm. Idle is a slow hydraulic breath; a collect cycle swings the
+   * mast out over the kerb, closes the jaws, lifts and folds back.
+   */
+  _updateArm(delta) {
+    if (!this.armBoom) return;
+    const base = this.armBase;
+    const boom = this.armBoom;
+    const grab = this.armGrabber;
+
+    if (this.armState === 'idle') {
+      const sway = Math.sin(this._elapsed * 0.7);
+      boom.rotation.z = -0.04 + sway * 0.03;
+      grab.rotation.z = 0.02 - sway * 0.02;
+      base.position.x = THREE.MathUtils.lerp(base.position.x, this._armHomeX, 0.2);
+      this.grabberArms.forEach((jaw) => {
+        jaw.rotation.x = jaw.userData.side * (0.1 + Math.sin(this._elapsed * 0.7 + 1) * 0.07);
+      });
+      return;
+    }
+
+    // Durations chosen to total ~1.6s, comfortably inside the round manager's
+    // 0.9s pickup cooldown plus the bin's own 1.0s lift+tip.
+    const DUR = { reach: 0.5, lift: 0.6, stow: 0.5 };
+    this.armPhase += delta / DUR[this.armState];
+    const k = Math.min(this.armPhase, 1);
+    const ease = k * k * (3 - 2 * k);
+
+    if (this.armState === 'reach') {
+      // Swing out over the kerb and open the jaws.
+      base.position.x = this._armHomeX - ease * 0.55;
+      boom.rotation.z = -0.04 - ease * 0.5;
+      grab.rotation.z = 0.02 + ease * 0.45;
+      this.grabberArms.forEach((jaw) => { jaw.rotation.x = jaw.userData.side * (0.1 + ease * 0.5); });
+      if (k >= 1) { this.armState = 'lift'; this.armPhase = 0; }
+    } else if (this.armState === 'lift') {
+      // Jaws close, arm raises the bin toward the hopper.
+      base.position.x = this._armHomeX - 0.55 + ease * 0.2;
+      boom.rotation.z = -0.54 + ease * 0.34;
+      grab.rotation.z = 0.47 - ease * 0.3;
+      this.grabberArms.forEach((jaw) => { jaw.rotation.x = jaw.userData.side * (0.6 - ease * 0.55); });
+      if (k >= 1) { this.armState = 'stow'; this.armPhase = 0; }
+    } else if (this.armState === 'stow') {
+      base.position.x = this._armHomeX - 0.35 + ease * 0.35;
+      boom.rotation.z = -0.2 + ease * 0.16;
+      grab.rotation.z = 0.17 - ease * 0.15;
+      this.grabberArms.forEach((jaw) => { jaw.rotation.x = jaw.userData.side * (0.05 + ease * 0.05); });
+      if (k >= 1) { this.armState = 'idle'; this.armPhase = 0; }
+    }
   }
 
   // --- Lighting ------------------------------------------------------------
@@ -1060,15 +1128,7 @@ export class Truck {
       this.chargePortLamp.material.emissiveIntensity = 1.0 + Math.sin(this._elapsed * 1.6) * 0.6;
     }
 
-    // The arm idles with a slow hydraulic breathing motion.
-    if (this.armBoom) {
-      const sway = Math.sin(this._elapsed * 0.7);
-      this.armBoom.rotation.z = -0.04 + sway * 0.03;
-      this.armGrabber.rotation.z = 0.02 - sway * 0.02;
-      this.grabberArms.forEach((jaw) => {
-        jaw.rotation.x = jaw.userData.side * (0.1 + Math.sin(this._elapsed * 0.7 + 1) * 0.07);
-      });
-    }
+    this._updateArm(delta);
   }
 
   get forwardSpeedKmh() {

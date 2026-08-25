@@ -144,6 +144,14 @@ export function buildSingaporeWorld() {
   moon.shadow.bias = -0.0006;
   group.add(moon, moon.target);
 
+  // Bins along the promenade edges.
+  const binSpots = [];
+  for (let i = 0; i < 7; i++) {
+    const z = -44 + i * 15;
+    binSpots.push({ x: 5.6, z });
+    binSpots.push({ x: -5.6, z: z + 7 });
+  }
+
   return {
     group,
     name: '🌏 Singapore',
@@ -155,6 +163,8 @@ export function buildSingaporeWorld() {
     bounds,
     mapExtent: 90,
     mapViewRadius: 58,
+    binSpots,
+    depot: { x: -4, z: 56 },
     spawn: new THREE.Vector3(-4, 0, 60),
     heading: Math.PI,
     portals: [

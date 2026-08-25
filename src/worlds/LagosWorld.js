@@ -119,6 +119,14 @@ export function buildLagosWorld() {
   sun.shadow.bias = -0.0006;
   group.add(sun, sun.target);
 
+  // Bins along the roadside, on the market side and opposite.
+  const binSpots = [];
+  for (let i = 0; i < 7; i++) {
+    const z = -46 + i * 16;
+    binSpots.push({ x: 6.8, z });
+    binSpots.push({ x: -6.8, z: z + 8 });
+  }
+
   return {
     group,
     name: '🏙️ Lagos',
@@ -130,6 +138,8 @@ export function buildLagosWorld() {
     bounds,
     mapExtent: 95,
     mapViewRadius: 58,
+    binSpots,
+    depot: { x: 5, z: 58 },
     spawn: new THREE.Vector3(5, 0, 62),
     heading: Math.PI,
     portals: [

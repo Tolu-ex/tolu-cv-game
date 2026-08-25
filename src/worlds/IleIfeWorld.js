@@ -168,6 +168,14 @@ export function buildIleIfeWorld() {
   sun.shadow.bias = -0.0006;
   group.add(sun, sun.target);
 
+  // Bins along the dirt road's shoulders.
+  const binSpots = [];
+  for (let i = 0; i < 7; i++) {
+    const z = -42 + i * 15;
+    binSpots.push({ x: 6.4, z });
+    binSpots.push({ x: -6.4, z: z + 7 });
+  }
+
   return {
     group,
     name: '🌍 Ile-Ife',
@@ -179,6 +187,8 @@ export function buildIleIfeWorld() {
     bounds,
     mapExtent: 85,
     mapViewRadius: 58,
+    binSpots,
+    depot: { x: 0, z: 56 },
     spawn: new THREE.Vector3(0, 0, 60),
     heading: Math.PI,
     portals: [

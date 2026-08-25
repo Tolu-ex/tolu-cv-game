@@ -174,6 +174,14 @@ export function buildStreetMarketWorld() {
   moon.shadow.bias = -0.0006;
   group.add(moon, moon.target);
 
+  // Bins between the stalls and the lane, where a real market's waste sits.
+  const binSpots = [];
+  for (let i = 0; i < 7; i++) {
+    const z = -40 + i * 14;
+    binSpots.push({ x: 5.6, z });
+    binSpots.push({ x: -5.6, z: z + 7 });
+  }
+
   return {
     group,
     name: '👟 Street Market',
@@ -185,6 +193,8 @@ export function buildStreetMarketWorld() {
     bounds,
     mapExtent: 75,
     mapViewRadius: 48,
+    binSpots,
+    depot: { x: 0, z: 48 },
     spawn: new THREE.Vector3(0, 0, 52),
     heading: Math.PI,
     portals: [

@@ -8,6 +8,7 @@ import { Portal } from '../entities/Portal.js';
 import { HUD } from '../ui/HUD.js';
 import { StoryCard } from '../ui/StoryCard.js';
 import { MiniMap } from '../ui/MiniMap.js';
+import { RoundManager } from './RoundManager.js';
 import { CV_DATA } from '../data/cvData.js';
 import { disposeObject3D } from '../utils/geoBuilders.js';
 import { createEnvironment } from '../utils/materials.js';
@@ -76,6 +77,10 @@ export class Game {
     // instead of being dragged along with the truck.
     this.truckFX = new TruckFX();
     this.scene.add(this.truckFX.group);
+
+    // The collection round: bins, hopper load, depot, score.
+    this.round = new RoundManager(this.scene);
+    this.round.onEvent = (e) => this._onRoundEvent(e);
 
     this.currentWorldId = null;
     this.currentWorldGroup = null;
@@ -172,6 +177,15 @@ export class Game {
       this.portals.push(portal);
     }
 
+    this.round.build(desc);
+    this.hud.setRound({
+      score: this.round.score,
+      load: this.round.load,
+      capacity: this.round.capacity,
+      collected: this.round.collectedThisWorld,
+      total: this.round.totalThisWorld,
+    });
+
     this.hud.setWorldName(desc.name || id);
     if (THEMED_WORLD_IDS.includes(id)) this.currentEntryHubId = id;
 
@@ -210,6 +224,27 @@ export class Game {
     this.transitioning = false;
   }
 
+  _onRoundEvent(e) {
+    if (e.type === 'pickupStarted') {
+      this.truck.playArmCycle();
+      return;
+    }
+    if (e.type === 'collected') {
+      this.hud.setRound(e);
+      this.hud.toast(e.full
+        ? `🗑️ Hopper full — return to the depot`
+        : `🗑️ +100  ·  ${e.collected}/${e.total} bins`);
+      if (e.collected >= e.total && e.total > 0) {
+        this.hud.toast('✅ Every bin on the route collected!');
+      }
+      return;
+    }
+    if (e.type === 'emptied') {
+      this.hud.setRound(e);
+      this.hud.toast(`♻️ Tipped ${e.tipped} bins  ·  +${e.tipped * 50} bonus`);
+    }
+  }
+
   _checkPortals() {
     if (this.transitioning) return;
     for (const portal of this.portals) {
@@ -245,6 +280,7 @@ export class Game {
     }
 
     this.truckFX.update(delta, this.truck);
+    if (!this.transitioning) this.round.update(delta, this.truck);
     this.hud.setSpeed(this.truck.forwardSpeedKmh);
     this.miniMap.update(this.truck, this.portals);
 

@@ -197,6 +197,15 @@ export function buildHaarlemWorld() {
   sun.shadow.bias = -0.0006;
   group.add(sun, sun.target);
 
+  // Bins set out along the house fronts on both banks, clear of the canal
+  // (x = +-5.7) and the parked bikes.
+  const binSpots = [];
+  for (let i = 0; i < 7; i++) {
+    const z = -44 + i * 15;
+    binSpots.push({ x: 11.9, z, heading: -Math.PI / 2 });
+    binSpots.push({ x: -11.9, z: z + 7, heading: Math.PI / 2 });
+  }
+
   return {
     group,
     name: '🇳🇱 Haarlem',
@@ -208,6 +217,8 @@ export function buildHaarlemWorld() {
     bounds,
     mapExtent: 80,
     mapViewRadius: 52,
+    binSpots,
+    depot: { x: 2, z: 56 },
     spawn: new THREE.Vector3(9, 0, 60),
     heading: Math.PI,
     portals: [

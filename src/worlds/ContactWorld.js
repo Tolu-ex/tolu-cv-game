@@ -154,6 +154,14 @@ export function buildContactWorld() {
   sun.shadow.bias = -0.0006;
   group.add(sun, sun.target);
 
+  // Bins along the field track.
+  const binSpots = [];
+  for (let i = 0; i < 6; i++) {
+    const z = -38 + i * 15;
+    binSpots.push({ x: 4.6, z });
+    binSpots.push({ x: -4.6, z: z + 7 });
+  }
+
   return {
     group,
     name: '🌷 Contact',
@@ -165,6 +173,8 @@ export function buildContactWorld() {
     bounds,
     mapExtent: 80,
     mapViewRadius: 55,
+    binSpots,
+    depot: { x: 0, z: 50 },
     spawn: new THREE.Vector3(0, 0, 55),
     heading: Math.PI,
     portals: [
