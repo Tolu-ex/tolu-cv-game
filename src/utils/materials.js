@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { posterMaterial, flatMaterial } from './artDirection.js';
 
 // ---------------------------------------------------------------------------
 // Vehicle-grade materials.
@@ -82,89 +83,62 @@ function gradientCanvas(skyHex, groundHex) {
   return c;
 }
 
-// --- Material factories -----------------------------------------------------
-// Each returns a fresh material; the truck keeps its own instances so it can
-// animate emissive values (brake lights) without touching shared state.
 
-/** Automotive paint: coloured basecoat under a glossy clear lacquer. */
-export function paintMaterial(color, { metalness = 0.55, roughness = 0.32, clearcoat = 1.0 } = {}) {
-  return new THREE.MeshPhysicalMaterial({
-    color,
-    metalness,
-    roughness,
-    clearcoat,
-    clearcoatRoughness: 0.06,
-    envMapIntensity: 1.15,
-  });
+// ---------------------------------------------------------------------------
+// Truck / prop materials.
+//
+// These were physically-based: clearcoat paint, real chrome, transmissive
+// glass, all reflecting a generated environment map. The art direction is now
+// flat-vector, where none of that applies — a poster has no specular
+// highlight and no reflection. Each factory keeps its name and signature so
+// call sites did not have to change, but they now return cel-shaded surfaces
+// and the options that describe gloss are ignored.
+// ---------------------------------------------------------------------------
+
+/** Vehicle paint: one flat colour with a single soft shade step. */
+export function paintMaterial(color) {
+  return posterMaterial(color);
 }
 
-/** Polished metal — exhaust stacks, tanks, trim. */
-export function chromeMaterial(color = 0xdfe4e8, { roughness = 0.08 } = {}) {
-  return new THREE.MeshStandardMaterial({
-    color, metalness: 1.0, roughness, envMapIntensity: 1.4,
-  });
+/** Bright trim. Flat, slightly lifted — chrome cannot exist without reflections. */
+export function chromeMaterial(color = 0xdfe4e8) {
+  return posterMaterial(color);
 }
 
-/** Brushed / cast metal — chassis rails, brackets, hydraulic bodies. */
-export function metalMaterial(color = 0x6e7378, { roughness = 0.45 } = {}) {
-  return new THREE.MeshStandardMaterial({
-    color, metalness: 0.9, roughness, envMapIntensity: 0.9,
-  });
+/** Structural metal. */
+export function metalMaterial(color = 0x6e7378) {
+  return posterMaterial(color);
 }
 
 /**
- * Vehicle glass. Deliberately NOT using `transmission` here: physical
- * transmission renders whatever is behind the pane, and behind a game-truck
- * windscreen there is very little, so the glass goes black and reads as a hole.
- * A bright, strongly-reflective surface sells "glass" far better at this scale.
+ * Glass. In a flat illustration glazing is drawn as a pale, slightly
+ * transparent shape — never as a reflection — so this is an even fill.
  */
-export function glassMaterial(color = 0x5b7382) {
-  return new THREE.MeshPhysicalMaterial({
-    color,
-    metalness: 0.25,
-    roughness: 0.04,
-    clearcoat: 1.0,
-    clearcoatRoughness: 0.03,
-    envMapIntensity: 2.6,
-    transparent: true,
-    opacity: 0.72,
-  });
+export function glassMaterial(color = 0xbcd6e4) {
+  return flatMaterial(color, { transparent: true, opacity: 0.78 });
 }
 
-/** Tyre rubber — matte, non-metallic, drinks light. */
-export function rubberMaterial(color = 0x14161a) {
-  return new THREE.MeshStandardMaterial({
-    color, metalness: 0.0, roughness: 0.92, envMapIntensity: 0.35,
-  });
+export function rubberMaterial(color = 0x3d4750) {
+  return posterMaterial(color);
 }
 
-/** Matte structural plastic — bumpers, mudflaps, trim. */
-export function plasticMaterial(color, { roughness = 0.7 } = {}) {
-  return new THREE.MeshStandardMaterial({
-    color, metalness: 0.05, roughness, envMapIntensity: 0.6,
-  });
+export function plasticMaterial(color) {
+  return posterMaterial(color);
 }
 
-/** Self-lit lens (headlights, indicators, beacon). */
+/**
+ * Self-lit lens (headlamps, indicators, brake lights).
+ *
+ * Toon rather than basic: the truck animates `emissiveIntensity` on these to
+ * blink indicators and brighten brake lamps, and `MeshBasicMaterial` has no
+ * emissive uniform at all — assigning one makes the renderer throw when it
+ * tries to refresh it.
+ */
 export function lensMaterial(color, intensity = 1.0) {
-  return new THREE.MeshStandardMaterial({
-    color,
-    emissive: color,
-    emissiveIntensity: intensity,
-    metalness: 0.0,
-    roughness: 0.25,
-    envMapIntensity: 0.8,
-  });
+  return posterMaterial(color, { emissive: color, emissiveIntensity: intensity });
 }
 
-/** Retro-reflective safety tape — reads bright from any angle. */
+/** Retro-reflective safety tape. */
 export function reflectiveMaterial(color) {
-  return new THREE.MeshStandardMaterial({
-    color,
-    emissive: color,
-    emissiveIntensity: 0.45,
-    metalness: 0.35,
-    roughness: 0.35,
-    envMapIntensity: 1.2,
-  });
+  return flatMaterial(color);
 }

@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { posterMaterial, flatMaterial } from './artDirection.js';
 
 // ---------------------------------------------------------------------------
 // Shared low-poly building blocks used across every world. Keeping these in
@@ -6,20 +7,27 @@ import * as THREE from 'three';
 // ---------------------------------------------------------------------------
 
 const matCache = new Map();
+
+/**
+ * Shared surface for world scenery, cel-shaded to the poster art direction.
+ *
+ * The signature still accepts the old PBR options (roughness, metalness,
+ * flat) so the seven world files did not all need rewriting, but those are
+ * deliberately ignored: a flat-vector look has no gloss, no metal and no
+ * specular. Only colour, emissive and transparency survive.
+ */
 export function stdMat(color, opts = {}) {
-  const key = `${color}|${opts.roughness ?? 0.85}|${opts.metalness ?? 0.05}|${opts.emissive ?? 0}|${opts.emissiveIntensity ?? 0}|${opts.transparent ?? false}|${opts.opacity ?? 1}`;
+  const key = `${color}|${opts.emissive ?? 0}|${opts.emissiveIntensity ?? 0}|${opts.transparent ?? false}|${opts.opacity ?? 1}|${opts.side ?? 'front'}|${opts.unlit ?? false}`;
   if (matCache.has(key)) return matCache.get(key);
-  const m = new THREE.MeshStandardMaterial({
-    color,
-    roughness: opts.roughness ?? 0.85,
-    metalness: opts.metalness ?? 0.05,
-    flatShading: opts.flat !== false,
-    emissive: opts.emissive ?? 0x000000,
-    emissiveIntensity: opts.emissiveIntensity ?? 0,
-    transparent: opts.transparent ?? false,
-    opacity: opts.opacity ?? 1,
-    side: opts.side ?? THREE.FrontSide,
-  });
+  const m = opts.unlit
+    ? flatMaterial(color, opts)
+    : posterMaterial(color, {
+        emissive: opts.emissive ?? 0x000000,
+        emissiveIntensity: opts.emissiveIntensity ?? 0,
+        transparent: opts.transparent ?? false,
+        opacity: opts.opacity ?? 1,
+        side: opts.side ?? THREE.FrontSide,
+      });
   matCache.set(key, m);
   return m;
 }

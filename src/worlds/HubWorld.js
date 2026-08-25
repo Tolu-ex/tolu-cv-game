@@ -122,29 +122,22 @@ export function buildHubWorld() {
     clouds.push(cloud);
   }
 
-  // Lighting
-  const hemi = new THREE.HemisphereLight(0xbfe8ff, C.ground, 0.65);
-  group.add(hemi);
-  const sun = new THREE.DirectionalLight(0xfff6e0, 1.4);
+  // Lighting for cel shading: mostly ambient so surfaces sit in the ramp's
+  // upper band, with one soft directional to pick out which face is lit. A
+  // strong key light would snap most faces to the dark band and read harsh.
+  group.add(new THREE.AmbientLight(0xffffff, 2.1));
+  group.add(new THREE.HemisphereLight(0xdcebf2, C.ground, 1.1));
+  const sun = new THREE.DirectionalLight(0xfff6e8, 1.05);
   sun.position.set(60, 90, 40);
-  sun.castShadow = true;
-  sun.shadow.mapSize.set(2048, 2048);
-  sun.shadow.camera.left = -140;
-  sun.shadow.camera.right = 140;
-  sun.shadow.camera.top = 140;
-  sun.shadow.camera.bottom = -140;
-  sun.shadow.camera.far = 260;
-  sun.shadow.bias = -0.0006;
-  group.add(sun);
-  group.add(sun.target);
+  group.add(sun, sun.target);
 
   return {
     group,
     name: '🌿 Nature World',
     sky: C.sky,
     fog: C.fog,
-    fogNear: 60,
-    fogFar: 220,
+    fogNear: 45,
+    fogFar: 165,
     dustColor: 0xcfc4a8, // dry path dust
     bounds: WORLD_BOUNDS,
     // Wide enough to hold the whole portal ring (radius 92) plus the treeline.

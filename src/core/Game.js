@@ -11,7 +11,6 @@ import { MiniMap } from '../ui/MiniMap.js';
 import { RoundManager } from './RoundManager.js';
 import { CV_DATA } from '../data/cvData.js';
 import { disposeObject3D } from '../utils/geoBuilders.js';
-import { createEnvironment } from '../utils/materials.js';
 
 import { buildHubWorld, HUB_PORTAL_DEFS } from '../worlds/HubWorld.js';
 import { buildHaarlemWorld } from '../worlds/HaarlemWorld.js';
@@ -44,17 +43,14 @@ export class Game {
 
     this.renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance' });
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-    this.renderer.shadowMap.enabled = true;
-    this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
-    this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    this.renderer.toneMappingExposure = 1.05;
+    // Flat-vector art direction: every realism feature is off on purpose.
+    // Cast shadows put soft gradients under objects, and filmic tone mapping
+    // rolls off exactly the pale, high-key colours the poster look depends on.
+    this.renderer.shadowMap.enabled = false;
+    this.renderer.toneMapping = THREE.NoToneMapping;
 
     this.scene = new THREE.Scene();
-    // Reflection source for every metal/glass/painted surface in the game.
-    // Without this, `metalness` renders as near-black and the truck reads flat.
-    this.envMap = createEnvironment(this.renderer);
-    this.scene.environment = this.envMap;
     this.camera = new THREE.PerspectiveCamera(58, window.innerWidth / window.innerHeight, 0.1, 600);
 
     this.clock = new THREE.Clock();
@@ -148,9 +144,6 @@ export class Game {
     this.scene.background = new THREE.Color(desc.sky);
     this.scene.fog = new THREE.Fog(desc.fog, desc.fogNear ?? 40, desc.fogFar ?? 200);
 
-    // Slight exposure lift at night so the worlds read as dark-but-legible
-    // rather than pitch black.
-    this.renderer.toneMappingExposure = desc.night ? 1.15 : 1.05;
     this.truck.setHeadlights(!!desc.night);
     this.truckFX.setDustColor(desc.dustColor ?? 0xcfc4a8);
 

@@ -2,14 +2,18 @@
 
 export const PALETTE = {
   nature: {
-    ground: 0x4caa4c,
-    groundDark: 0x3c8f3f,
-    sky: 0x9fd8ff,
-    fog: 0xbfe8ff,
-    treeTrunk: 0x6b4a2f,
-    treeLeaf: 0x2f9e4f,
-    treeLeafLight: 0x49b95f,
-    path: 0xcabf98,
+    // Poster palette. Two things matter more than hue: the scene must read
+    // COOL (pale blue dominant, not green), and it needs real value
+    // separation — dark conifers against a pale sky is what gives a flat
+    // illustration its crispness. An all-mid-tone scene reads as mush.
+    ground: 0xbcc9ae,       // pale sage, not grass green
+    groundDark: 0xa9b89c,
+    sky: 0xd8e8f1,          // pale powder blue
+    fog: 0xd8e8f1,          // matches sky so distance dissolves into it
+    treeTrunk: 0x8e806c,
+    treeLeaf: 0x40614f,     // deep cool green, well below the ground in value
+    treeLeafLight: 0x577a61,
+    path: 0xece5d6,         // warm ivory against the cool field
   },
   haarlem: {
     sky: 0xaebfce,
@@ -75,13 +79,13 @@ export const PALETTE = {
   truck: {
     // White cab against a green body, as every real refuse truck runs. A
     // silver-grey cab blended into the bodywork and read as one muddy mass.
-    cab: 0xf2f4f5,
+    cab: 0xf6f2ea,
     cabDark: 0x9aa1a8,
-    container: 0x8fd400,
-    containerDark: 0x6fae00,
-    chassis: 0x2b2d30,
+    container: 0x7f9c76,
+    containerDark: 0x6b8763,
+    chassis: 0x4a545c,
     glass: 0x9fd7e8,
-    arm: 0xffb800,
+    arm: 0xe8c07a,
     light: 0xfff2b0,
     tail: 0xff3b30,
   },
