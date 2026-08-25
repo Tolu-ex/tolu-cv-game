@@ -1,8 +1,8 @@
 # ROVA CV Drive 🚛
 
 A 3D driving game built with **Three.js + Vite**. Hop in a detailed, low-poly
-ROVA garbage truck (DAF-style silver-grey cab, lime-green compactor body,
-robotic side-loading arm) and roam a green nature world. Drive through any of
+ROVA electric refuse truck (DAF-style silver-grey cab, lime-green compactor
+body, robotic side-loading arm) and roam a green nature world. Drive through any of
 the six glowing portal archways to teleport into a chapter of Toluwalase
 Awobusuyi's CV, complete with a story card and a fade transition.
 
@@ -69,10 +69,17 @@ each through a damped spring. Measured behaviour:
 
 The chase camera widens its FOV with speed, swings wide of turns to let you see
 into the corner, and adds speed-scaled shake.
-[`TruckFX.js`](src/entities/TruckFX.js) adds exhaust haze and wheel dust from
-recycled sprite pools (one draw call each, no per-puff allocation); dust is
-tinted per world via `dustColor`, so Ile-Ife throws red laterite and Haarlem
-throws grey cobble grit.
+[`TruckFX.js`](src/entities/TruckFX.js) adds wheel dust from a recycled sprite
+pool (one draw call, no per-puff allocation); dust is tinted per world via
+`dustColor`, so Ile-Ife throws red laterite and Haarlem throws grey cobble grit.
+
+**It's electric.** ROVA runs an electric refuse fleet, so the truck has no
+exhaust stack and emits nothing — a charge port sits where the stack would
+otherwise be, and the livery carries a `⚡ 100% ELEKTRISCH` strapline. The body
+also has no idle vibration: a diesel shakes at a standstill, an electric
+drivetrain is dead still, and that stillness is part of how an EV reads. Tyre
+dust stays, since rubber on a dry surface throws grit whatever turns the
+wheels.
 
 ## 🧭 Minimap
 

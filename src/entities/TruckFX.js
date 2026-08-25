@@ -1,11 +1,14 @@
 import * as THREE from 'three';
 
 /**
- * Particle effects that sell the truck as a working machine: diesel haze from
- * the stack and dust kicked up by the tyres.
+ * Particle effects for the truck.
  *
- * Both systems are fixed-size sprite pools recycled in place — no allocation
- * per puff, and a single draw call each, so this costs almost nothing.
+ * Only tyre dust: the truck is electric, so there is no exhaust to emit. Dust
+ * is drivetrain-agnostic — rubber on a dry surface throws grit whatever is
+ * turning the wheels.
+ *
+ * A fixed-size sprite pool recycled in place — no allocation per puff and a
+ * single draw call, so this costs almost nothing.
  */
 
 function softSpriteTexture(inner = 'rgba(255,255,255,0.9)', outer = 'rgba(255,255,255,0)') {
@@ -93,11 +96,9 @@ export class TruckFX {
   constructor() {
     this.group = new THREE.Group(); // lives in world space, not on the truck
 
-    this.exhaust = new ParticlePool(28, { color: 0x6b6f74, size: 0.3, opacity: 0.34 });
     this.dust = new ParticlePool(24, { color: 0xcfc4a8, size: 0.42, opacity: 0.3 });
-    this.group.add(this.exhaust.group, this.dust.group);
+    this.group.add(this.dust.group);
 
-    this._exhaustTimer = 0;
     this._dustTimer = 0;
     this._worldPos = new THREE.Vector3();
     this._vel = new THREE.Vector3();
@@ -110,22 +111,6 @@ export class TruckFX {
 
   update(delta, truck) {
     const speedFrac = Math.min(Math.abs(truck.speed) / truck.maxSpeed, 1);
-
-    // --- Exhaust: idles slowly, puffs harder under load ---
-    this._exhaustTimer -= delta;
-    if (this._exhaustTimer <= 0) {
-      this._exhaustTimer = 0.16 - speedFrac * 0.09;
-      truck.body.localToWorld(this._worldPos.copy(truck.exhaustTip));
-      this._vel.set(
-        (Math.random() - 0.5) * 0.35,
-        0.9 + Math.random() * 0.5,
-        (Math.random() - 0.5) * 0.35,
-      );
-      // Puffs are left behind as the truck drives away from them.
-      this._vel.x -= Math.sin(truck.heading) * truck.speed * 0.28;
-      this._vel.z -= Math.cos(truck.heading) * truck.speed * 0.28;
-      this.exhaust.emit(this._worldPos, this._vel, 1.5 + Math.random() * 0.7, 0.24 + speedFrac * 0.16);
-    }
 
     // --- Wheel dust: only once actually moving ---
     if (speedFrac > 0.18) {
@@ -152,12 +137,10 @@ export class TruckFX {
       }
     }
 
-    this.exhaust.update(delta);
     this.dust.update(delta);
   }
 
   dispose() {
-    this.exhaust.dispose();
     this.dust.dispose();
   }
 }

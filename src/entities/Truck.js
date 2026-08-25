@@ -33,8 +33,14 @@ function rovaDecalTexture() {
     ctx.fillText('ROVA', w / 2, h / 2 - 8);
     ctx.font = '600 22px Rubik, Arial, sans-serif';
     ctx.fillStyle = '#4a4a4a';
-    ctx.fillText('AFVAL & GRONDSTOFFEN', w / 2, h / 2 + 46);
-  }, 512, 200);
+    ctx.fillText('AFVAL & GRONDSTOFFEN', w / 2, h / 2 + 42);
+    // Electric strapline, as the real Dutch electric refuse fleet carries.
+    ctx.fillStyle = '#0f9d58';
+    ctx.beginPath(); ctx.roundRect(w / 2 - 108, h / 2 + 56, 216, 34, 17); ctx.fill();
+    ctx.fillStyle = '#ffffff';
+    ctx.font = '800 20px Rubik, Arial, sans-serif';
+    ctx.fillText('\u26A1 100% ELEKTRISCH', w / 2, h / 2 + 74);
+  }, 512, 220);
 }
 
 function plateTexture() {
@@ -199,6 +205,7 @@ export class Truck {
       trim: plasticMaterial(0x1c1f23, { roughness: 0.75 }),
       hydraulic: chromeMaterial(0xd8dde2, { roughness: 0.05 }),
       amber: lensMaterial(0xffa71a, 1.1),
+      chargeLamp: lensMaterial(0x4dffa8, 1.6),
       headlight: lensMaterial(0xfff6de, 1.0),
       tail: lensMaterial(0xff2a1f, 0.55),
       reverse: lensMaterial(0xffffff, 0.0),
@@ -458,15 +465,20 @@ export class Truck {
       this.markerLamps.push(lamp);
     }
 
-    // Exhaust stack with heat shield, tucked against the back of the cab.
-    const stack = part(new THREE.CylinderGeometry(0.075, 0.085, 1.4, 12), M.chrome);
-    stack.position.set(1.06, 1.05, 1.4);
-    this.body.add(stack);
-    const shield = part(new THREE.CylinderGeometry(0.1, 0.1, 0.6, 12, 1, true), M.metal);
-    shield.position.set(1.06, 0.9, 1.4);
-    shield.material.side = THREE.DoubleSide;
-    this.body.add(shield);
-    this.exhaustTip = new THREE.Vector3(1.06, 1.75, 1.4);
+    // Charge port where a diesel truck would carry its exhaust stack. ROVA runs
+    // electric refuse trucks, so there is no stack and nothing to emit.
+    const portFlap = part(rbox(0.06, 0.34, 0.4, 0.03), M.cabPaint);
+    portFlap.position.set(-1.21, 0.62, -0.45);
+    cab.add(portFlap);
+    const portRing = part(new THREE.CylinderGeometry(0.1, 0.1, 0.05, 14), M.darkMetal);
+    portRing.rotation.z = Math.PI / 2;
+    portRing.position.set(-1.25, 0.62, -0.45);
+    cab.add(portRing);
+    const portGlow = part(new THREE.CylinderGeometry(0.05, 0.05, 0.06, 12), M.chargeLamp, { cast: false });
+    portGlow.rotation.z = Math.PI / 2;
+    portGlow.position.set(-1.27, 0.62, -0.45);
+    cab.add(portGlow);
+    this.chargePortLamp = portGlow;
   }
 
   // --- Compactor body ------------------------------------------------------
@@ -777,15 +789,12 @@ export class Truck {
     this.rollVel += ((rollTarget - this.roll) * stiffness - this.rollVel * damping) * delta;
     this.roll += this.rollVel * delta;
 
-    // Idle engine shake, strongest at a standstill — the truck feels alive
-    // even when parked.
-    const idle = (1 - Math.min(Math.abs(this.speed) / 4, 1)) * 0.0016;
-    const shake = Math.sin(this._elapsed * 38) * idle;
-
-    this.body.rotation.x = this.pitch + shake;
+    // No idle shake. A diesel vibrates at a standstill; an electric drivetrain
+    // is dead still, and that stillness is part of how an EV reads.
+    this.body.rotation.x = this.pitch;
     this.body.rotation.z = this.roll;
     // Body sinks very slightly with the spring travel.
-    this.body.position.y = -Math.abs(this.pitch) * 0.12 + shake * 2;
+    this.body.position.y = -Math.abs(this.pitch) * 0.12;
   }
 
   _updateWheels(delta) {
