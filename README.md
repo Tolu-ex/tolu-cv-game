@@ -102,14 +102,45 @@ than hard-coded, and the front wheels use true **Ackermann** — the inner wheel
 turns further than the outer, because they travel circles of different radii
 and would otherwise scrub.
 
-Verified against the geometry rather than by feel:
+**Sideslip.** A pure kinematic model points the velocity vector exactly along
+the heading, so the path bends the same frame the body yaws. Real vehicles do
+not: the body rotates first and the path follows a beat later, and on corner
+exit they keep drifting outward after the wheels have straightened. That lag is
+most of what cornering *mass* looks like.
+
+Modelled as a first-order lag on the sideslip angle β rather than a full tyre
+model. The relaxation *length* is roughly constant on a real tyre (~1 m of
+travel), so the time constant falls as speed rises:
+
+```
+β_kin = atan((l_r / L) · tan δ)          τ = 1.2 m / |v|
+β̇     = (β_kin − β) / τ                  ψ̇ = (v·cos β / L) · tan δ
+course = ψ + β                            a_lat = v · ψ̇
+```
+
+Integrated with the **midpoint** rule. Plain Euler rotated the heading first and
+then translated along the *new* heading, biasing every frame the same way —
+small per step but systematic, and invisible to a steady-state circle test
+while showing up on transients.
+
+Body roll is driven by that real `a_lat`, not by the key press. Driving it from
+input made the truck lean the instant a key went down — before it had begun to
+turn — and snap upright the instant it came up, while still arcing.
+
+Each wheel also spins at its *own* ground speed (`v + ω × r`); spinning them all
+at `v/r` makes the inner pair visibly over-rotate at lock.
+
+Verified against the geometry rather than by feel. Radii measured at true
+steady state with speed pinned, since averaging a varying steer angle and then
+computing `L/tan δ` from the mean is not the mean radius:
 
 | test | result |
 |---|---|
 | turn on the spot | 0.0000° after 3 s at full lock, no throttle |
-| circle radius | predicted 10.81 m, measured **10.76 m** (0.4% error) |
-| off-tracking | front traces 12.19 m, rear **10.91 m** |
-| Ackermann | outer 26.4°, inner **31.9°** |
+| circle radius, 4 / 9 / 15 m/s | **0.00%** error vs theory, origin and rear axle |
+| corner exit | wheels centred at frame 10, sideslip still 1.31° and settling |
+| off-tracking | front traces 13.54 m, rear **9.62 m** |
+| Ackermann | outer 26.4°, inner **32.0°** |
 | straight-line drift | exactly 0 over 50 m |
 
 **Feel.** Longitudinal acceleration drives pitch and cornering drives roll,

@@ -40,6 +40,9 @@ export class Truck {
     this.roll = 0;  this.rollVel = 0;
     this._prevSpeed = 0;
     this._elapsed = 0;
+    this.beta = 0;        // sideslip: angle between heading and course
+    this.yawRate = 0;
+    this.lateralAccel = 0;
 
     // ---- Arm cycle ----
     this.armState = 'idle';
@@ -93,6 +96,7 @@ export class Truck {
     this.track = rig.track;
     this.frontAxleZ = rig.frontAxleZ;
     this.rearAxleZ = rig.rearAxleZ;
+    this.wheelInfo = rig.wheelInfo;
     this.frontWheels = rig.wheelInfo.filter((w) => w.isFront);
 
     this.armBoom = rig.armBoom;
@@ -145,6 +149,7 @@ export class Truck {
     this.heading = heading;
     this.speed = 0;
     this.pitch = this.pitchVel = this.roll = this.rollVel = 0;
+    this.beta = this.yawRate = this.lateralAccel = 0;
     this._prevSpeed = 0;
     this.group.position.copy(position);
     this.group.rotation.y = heading;
@@ -180,7 +185,7 @@ export class Truck {
     this.group.position.copy(this.position);
     this.group.rotation.y = this.heading;
 
-    this._updateSuspension(delta, steerInput);
+    this._updateSuspension(delta);
     this._updateWheels(delta);
     this._updateLights(delta, throttle, braking);
   }
@@ -208,47 +213,59 @@ export class Truck {
    * shift.
    */
   _steer(delta, steerInput, bounds) {
-    const speedFrac = THREE.MathUtils.clamp(Math.abs(this.speed) / this.maxSpeed, 0, 1);
+    const absV = Math.abs(this.speed);
+    const speedFrac = THREE.MathUtils.clamp(absV / this.maxSpeed, 0, 1);
 
-    // Speed-sensitive steering. At full lock and speed the bicycle model gives
-    // a radius tight enough to be undriveable (and would roll a real truck),
-    // so the available lock tapers as the truck gains speed. The wheels still
-    // turn at a constant RATE — only the limit moves.
+    // Speed-sensitive lock. Uses |v| so it behaves identically in reverse.
     const lockLimit = this.maxSteer * (1 - 0.5 * speedFrac);
     const target = THREE.MathUtils.clamp(steerInput * this.maxSteer, -lockLimit, lockLimit);
-    // Rate-limited rather than lerped, so the steering wheel moves at a
-    // believable speed instead of snapping proportionally to the error.
     const STEER_RATE = 1.9;                       // rad/s at the road wheels
     const dSteer = THREE.MathUtils.clamp(target - this.steerAngle, -STEER_RATE * delta, STEER_RATE * delta);
     this.steerAngle += dSteer;
     if (steerInput === 0) {
-      // Self-centring, as caster does on a real axle.
       this.steerAngle = THREE.MathUtils.lerp(this.steerAngle, 0, 1 - Math.pow(0.02, delta));
     }
 
     const L = this.wheelbase;
+    const lr = -this.rearAxleZ;                   // origin back to the rear axle
     const v = this.speed;
 
-    // Rear axle is the reference point the model is defined about.
-    const sinH = Math.sin(this.heading);
-    const cosH = Math.cos(this.heading);
-    let rx = this.position.x - this.rearAxleZ * sinH;
-    let rz = this.position.z - this.rearAxleZ * cosH;
+    // --- Sideslip -----------------------------------------------------------
+    // A pure kinematic model points the velocity vector exactly along the
+    // heading, so the path bends the same frame the body yaws. Real vehicles
+    // do not do that: the body rotates first and the path follows a beat
+    // later, and on corner exit they keep drifting outward after the wheels
+    // straighten. That lag is most of what cornering mass looks like.
+    //
+    // Modelled as a first-order lag on the sideslip angle rather than a full
+    // tyre model, which would be far more machinery than this game needs.
+    // The relaxation LENGTH is roughly constant on a real tyre (~1 m of
+    // travel), so the time constant falls as speed rises.
+    const betaKin = Math.atan((lr / L) * Math.tan(this.steerAngle));
+    const RELAX_LENGTH = 1.2;                     // metres of travel to settle
+    const tau = THREE.MathUtils.clamp(RELAX_LENGTH / Math.max(absV, 0.75), 0.04, 0.45);
+    this.beta += (betaKin - this.beta) * (1 - Math.exp(-delta / tau));
 
-    // psi_dot = (v / L) * tan(delta). Proportional to v, which is what stops
-    // the truck turning while stationary.
-    this.yawRate = (v / L) * Math.tan(this.steerAngle);
+    // Exact kinematic yaw rate for the centre-referenced model. Reduces to
+    // (v/L)tan(delta) when beta is zero, so steady-state radius is unchanged.
+    this.yawRate = (v * Math.cos(this.beta) / L) * Math.tan(this.steerAngle);
+
+    // --- Integration --------------------------------------------------------
+    // Midpoint rather than explicit Euler. Euler rotated the heading first and
+    // then translated along the NEW heading, which biases every frame the same
+    // way — small per step, but systematic, and invisible to a steady-state
+    // circle test while showing up on transients.
+    const headingMid = this.heading + this.yawRate * delta * 0.5;
+    const course = headingMid + this.beta;        // where it actually travels
+    this.position.x += Math.sin(course) * v * delta;
+    this.position.z += Math.cos(course) * v * delta;
+
     this.heading += this.yawRate * delta;
     this.heading = Math.atan2(Math.sin(this.heading), Math.cos(this.heading));
 
-    // The rear axle always travels along the body's heading — this is the
-    // constraint that produces off-tracking for free.
-    rx += Math.sin(this.heading) * v * delta;
-    rz += Math.cos(this.heading) * v * delta;
+    // True lateral acceleration, for the body roll to work from.
+    this.lateralAccel = v * this.yawRate;
 
-    // Derive the body origin back from the rear axle.
-    this.position.x = rx + this.rearAxleZ * Math.sin(this.heading);
-    this.position.z = rz + this.rearAxleZ * Math.cos(this.heading);
     this.position.x = THREE.MathUtils.clamp(this.position.x, -bounds, bounds);
     this.position.z = THREE.MathUtils.clamp(this.position.z, -bounds, bounds);
   }
@@ -264,7 +281,7 @@ export class Truck {
    * under braking, squats under power) and cornering drives roll, each through
    * a damped spring so the body settles instead of snapping.
    */
-  _updateSuspension(delta, steerInput) {
+  _updateSuspension(delta) {
     const accel = (this.speed - this._prevSpeed) / Math.max(delta, 1e-4);
     this._prevSpeed = this.speed;
 
@@ -273,8 +290,14 @@ export class Truck {
     // at its clamp the whole time you hold W, which reads as permanently
     // nose-up.
     const pitchTarget = THREE.MathUtils.clamp(-accel * 0.004, -0.06, 0.06);
-    const lateral = steerInput * (this.speed / this.maxSpeed);
-    const rollTarget = THREE.MathUtils.clamp(lateral * 0.10, -0.09, 0.09);
+
+    // Roll follows real lateral acceleration (a = v * yawRate), not the raw
+    // key press. Driving it from input made the body lean the instant a key
+    // went down — before the truck had begun to turn — and snap upright the
+    // instant it came up, while the truck was still arcing. The lean was
+    // desynchronised from the actual corner, which is what read as wrong.
+    const aLat = this.lateralAccel || 0;
+    const rollTarget = THREE.MathUtils.clamp(aLat * 0.011, -0.09, 0.09);
 
     const stiffness = 120;
     const damping = 15;
@@ -299,8 +322,23 @@ export class Truck {
    * once the wheelbase and track are known.
    */
   _updateWheels(delta) {
-    const spin = (this.speed * delta) / this.wheelRadius;
-    this.wheels.spinning.forEach((s) => { s.rotation.x -= spin; });
+    // Each wheel travels its own arc: in a turn the outer wheels cover more
+    // ground than the inner ones, so spinning them all at v/r makes the inner
+    // pair visibly over-rotate at lock. Ground speed at a point on a rigid
+    // body is v_origin + omega x r.
+    const w = this.yawRate || 0;
+    const vx = this.speed * Math.sin(this.beta || 0);
+    const vz = this.speed * Math.cos(this.beta || 0);
+    for (const info of (this.wheelInfo || [])) {
+      const px = vx + w * info.z;
+      const pz = vz - w * info.x;
+      const ground = Math.hypot(px, pz) * Math.sign(pz || vz || 1);
+      info.pivot.rotation.x -= (ground * delta) / this.wheelRadius;
+    }
+    if (!this.wheelInfo) {
+      const spin = (this.speed * delta) / this.wheelRadius;
+      this.wheels.spinning.forEach((s) => { s.rotation.x -= spin; });
+    }
 
     const d = this.steerAngle;
     if (!this.frontWheels || Math.abs(d) < 1e-4) {
