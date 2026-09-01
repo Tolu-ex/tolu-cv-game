@@ -1,13 +1,21 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
+import { MeshoptDecoder } from 'three/examples/jsm/libs/meshopt_decoder.module.js';
 import { toonRamp } from '../../utils/artDirection.js';
 
 const MODEL_URL = `${import.meta.env.BASE_URL}rova-truck.glb`;
 
-/** Loads the truck once and hands back the parsed scene. */
+/**
+ * Loads the truck once and hands back the parsed scene.
+ *
+ * The shipped model is meshopt-compressed (5.5 MB -> 767 KB), so the decoder
+ * has to be registered before the loader will touch it.
+ */
 export function loadTruckModel() {
   return new Promise((resolve, reject) => {
-    new GLTFLoader().load(MODEL_URL, (gltf) => resolve(gltf.scene), undefined, reject);
+    new GLTFLoader()
+      .setMeshoptDecoder(MeshoptDecoder)
+      .load(MODEL_URL, (gltf) => resolve(gltf.scene), undefined, reject);
   });
 }
 
