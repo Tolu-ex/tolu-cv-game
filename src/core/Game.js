@@ -86,6 +86,10 @@ export class Game {
 
     this.truck = new Truck();
     this.scene.add(this.truck.group);
+    // Hydraulic sound is driven by the mechanism's phase boundaries, so a ram
+    // is heard when it actually starts moving rather than when the cycle was
+    // requested.
+    this.truck.onMechanismEvent = (event) => this._onMechanismEvent(event);
 
     // Exhaust + dust live in world space so puffs stay where they were emitted
     // instead of being dragged along with the truck.
@@ -191,6 +195,7 @@ export class Game {
 
     // Some worlds are ridden rather than driven.
     this.truck.setVehicle(desc.vehicle || 'truck');
+    this.truck.mechanism?.reset();   // never arrive with the arm stuck mid-cycle
     this.audio.setVehicle(this.truck.audioProfile);
     this.chaseCam.setFraming(this.truck.cameraFraming);
     this.truck.setHeadlights(!!desc.night);
@@ -274,7 +279,6 @@ export class Game {
   _onRoundEvent(e) {
     if (e.type === 'pickupStarted') {
       this.truck.playArmCycle();
-      this.audio.hydraulic(true);
       return;
     }
     if (e.type === 'collected') {
@@ -289,9 +293,31 @@ export class Game {
       return;
     }
     if (e.type === 'emptied') {
+      // Raise the tailgate and run the ejector, rather than the load simply
+      // vanishing. The audio now follows the mechanism's own phases.
+      this.truck.playTipCycle();
       this.audio.depotDump();
       this.hud.setRound(e);
       this.hud.toast(`♻️ Tipped ${e.tipped} bins  ·  +${e.tipped * 50} bonus`);
+    }
+  }
+
+  _onMechanismEvent(event) {
+    switch (event) {
+      case 'hydraulic':
+      case 'tailgate':
+      case 'eject':
+        this.audio.hydraulic(true);
+        break;
+      case 'grip':
+        this.audio.binTip();
+        break;
+      case 'dump':
+      case 'pack':
+        this.audio.depotDump();
+        break;
+      default:
+        break;
     }
   }
 

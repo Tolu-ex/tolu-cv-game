@@ -123,11 +123,15 @@ export class RoundManager {
     this._elapsed += delta;
     this._cooldown = Math.max(0, this._cooldown - delta);
 
-    // Where the arm actually reaches: out to the truck's kerb side (-X local),
-    // slightly ahead of the mast.
+    // Where the arm actually reaches. Taken from the gripper's measured
+    // position on the model, the same way the steering geometry is measured
+    // rather than tuned: these were two hard-coded constants that placed the
+    // pickup point on the opposite flank from the arm the model carries, so
+    // bins were collected by a side of the truck with no arm on it.
     const cos = Math.cos(truck.heading);
     const sin = Math.sin(truck.heading);
-    const armLocalX = -1.5, armLocalZ = 0.9;
+    const armLocalX = truck.gripperOffset?.x ?? -1.5;
+    const armLocalZ = truck.gripperOffset?.z ?? 0.9;
     const armX = truck.position.x + armLocalX * cos + armLocalZ * sin;
     const armZ = truck.position.z - armLocalX * sin + armLocalZ * cos;
     const armPoint = { x: armX, z: armZ };

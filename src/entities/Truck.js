@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { TruckMechanism } from './truck/mechanism.js';
 
 /**
  * The truck: physics rig plus whatever visual is attached to it.
@@ -44,9 +45,8 @@ export class Truck {
     this.yawRate = 0;
     this.lateralAccel = 0;
 
-    // ---- Arm cycle ----
-    this.armState = 'idle';
-    this.armPhase = 0;
+    this.mechanism = null;
+    this.gripperOffset = null;
 
     this.modelReady = false;
     this.wheels = { steerable: [], spinning: [] };
@@ -113,11 +113,12 @@ export class Truck {
     this.wheelInfo = rig.wheelInfo;
     this.frontWheels = rig.wheelInfo.filter((w) => w.isFront);
 
-    this.armBoom = rig.armBoom;
-    this.armCarriage = rig.armCarriage;
-    this.gripperJaws = [rig.gripperJawA, rig.gripperJawB].filter(Boolean);
-    this._armHomeRot = this.armBoom ? this.armBoom.rotation.x : 0;
-    this._carriageHomeY = this.armCarriage ? this.armCarriage.position.y : 0;
+    // Hydraulics. Absent on the bike, which simply has none.
+    this.mechanism = rig.joints
+      ? new TruckMechanism(rig.parts, rig.joints)
+      : null;
+    if (this.mechanism) this.mechanism.onEvent = (e) => this.onMechanismEvent(e);
+    this.gripperOffset = rig.gripperOffset || null;
 
     // Lamps, matched by the model's own material naming.
     const meshes = [...rig.parts.values()].filter((o) => o.isMesh && o.material);
@@ -207,14 +208,20 @@ export class Truck {
 
   // --- Public API ----------------------------------------------------------
 
+  /** Runs one bin-lift cycle. False if the hydraulics are already working. */
   playArmCycle() {
-    if (this.armState !== 'idle') return false;
-    this.armState = 'reach';
-    this.armPhase = 0;
-    return true;
+    return this.mechanism ? this.mechanism.liftBin() : false;
   }
 
-  get armBusy() { return this.armState !== 'idle'; }
+  /** Raises the tailgate and ejects the load — the depot tipping cycle. */
+  playTipCycle() {
+    return this.mechanism ? this.mechanism.tip() : false;
+  }
+
+  get armBusy() { return !!this.mechanism?.busy; }
+
+  /** Overridden by Game to drive the audio off real mechanism phases. */
+  onMechanismEvent() {}
 
   setHeadlights(on) {
     this.lightsOn = !!on;
@@ -514,33 +521,6 @@ export class Truck {
 
   /** Idle breathing, or a reach / lift / stow collection cycle. */
   _updateArm(delta) {
-    if (!this.armBoom) return;
-
-    if (this.armState === 'idle') {
-      const sway = Math.sin(this._elapsed * 0.7) * 0.02;
-      this.armBoom.rotation.x = this._armHomeRot + sway;
-      this.gripperJaws.forEach((j, i) => { j.rotation.y = (i ? 1 : -1) * (0.05 + sway); });
-      return;
-    }
-
-    const DUR = { reach: 0.5, lift: 0.6, stow: 0.5 };
-    this.armPhase += delta / DUR[this.armState];
-    const k = Math.min(this.armPhase, 1);
-    const ease = k * k * (3 - 2 * k);
-
-    if (this.armState === 'reach') {
-      this.armBoom.rotation.x = this._armHomeRot - ease * 0.5;
-      this.gripperJaws.forEach((j, i) => { j.rotation.y = (i ? 1 : -1) * (0.05 + ease * 0.45); });
-      if (k >= 1) { this.armState = 'lift'; this.armPhase = 0; }
-    } else if (this.armState === 'lift') {
-      this.armBoom.rotation.x = this._armHomeRot - 0.5 + ease * 0.3;
-      if (this.armCarriage) this.armCarriage.position.y = this._carriageHomeY + ease * 1.1;
-      this.gripperJaws.forEach((j, i) => { j.rotation.y = (i ? 1 : -1) * (0.5 - ease * 0.45); });
-      if (k >= 1) { this.armState = 'stow'; this.armPhase = 0; }
-    } else if (this.armState === 'stow') {
-      this.armBoom.rotation.x = this._armHomeRot - 0.2 + ease * 0.2;
-      if (this.armCarriage) this.armCarriage.position.y = this._carriageHomeY + (1 - ease) * 1.1;
-      if (k >= 1) { this.armState = 'idle'; this.armPhase = 0; }
-    }
+    if (this.mechanism) this.mechanism.update(delta);
   }
 }
