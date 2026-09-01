@@ -29,6 +29,7 @@ bundle.
 - **Drag** (left or right button) — orbit the camera freely, Roblox-style
 - **Scroll** — zoom in/out (4–30 m)
 - **C** — swing the camera back behind the truck
+- **M** — mute / unmute
 - Drive the truck through a glowing portal archway to enter that world's
   story card, then keep driving through the world's exit portal to return to
   the nature world.
@@ -140,6 +141,35 @@ papier and PMD. [`Bin.js`](src/entities/Bin.js) owns its own lift-and-tip
 animation so several can be mid-cycle without the truck tracking state per bin;
 [`RoundManager.js`](src/core/RoundManager.js) owns score, load, the depot and
 the pickup test.
+
+## 🔊 Audio
+
+Every sound is **synthesised at runtime** in WebAudio — there are no audio
+files, so it adds nothing to the download.
+
+The brief is an *electric* refuse truck, which sounds genuinely different to a
+diesel: no combustion rumble, no exhaust bark. Instead a rising inverter whine
+over a low torque hum, with tyre roar taking over at speed. Two whine
+oscillators sit a few Hz apart so they beat against each other — a single tone
+sounds like a test oscillator.
+
+Motor level tracks **load**, not just speed: holding the throttle sounds like
+effort and lifting off audibly relaxes before the truck has slowed. Measured on
+the master bus, coasting at 41 km/h is quieter than full throttle at 53 km/h.
+
+Also synthesised: air-brake release when coming to rest, hydraulic groan on the
+arm cycle, bin knock-and-rattle, the depot dump, a portal whoosh, the
+indicator relay tick, and the reversing beeper every real truck is required to
+carry.
+
+One thing worth knowing if you edit `AudioEngine.js`: a bandpass filter
+discards far more energy than a highpass, so the same nominal `gain` through
+different filters lands at wildly different loudness — measured, a bandpass
+burst came out ~9x quieter. `_noiseBurst` compensates for this so callers can
+think in relative loudness rather than filter physics.
+
+`M` mutes (persisted to localStorage, and it works during story cards), and
+audio ducks to 15% under transitions.
 
 ## 🧭 Minimap
 

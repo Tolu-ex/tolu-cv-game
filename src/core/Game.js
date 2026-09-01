@@ -10,6 +10,7 @@ import { HUD } from '../ui/HUD.js';
 import { StoryCard } from '../ui/StoryCard.js';
 import { MiniMap } from '../ui/MiniMap.js';
 import { RoundManager } from './RoundManager.js';
+import { AudioEngine } from '../audio/AudioEngine.js';
 import { CV_DATA } from '../data/cvData.js';
 import { disposeObject3D } from '../utils/geoBuilders.js';
 
@@ -79,6 +80,8 @@ export class Game {
     this.round = new RoundManager(this.scene);
     this.round.onEvent = (e) => this._onRoundEvent(e);
 
+    this.audio = new AudioEngine();
+
     this.currentWorldId = null;
     this.currentWorldGroup = null;
     this.currentWorldUpdate = null;
@@ -120,6 +123,9 @@ export class Game {
 
   start() {
     this.running = true;
+    // Browsers refuse to open an AudioContext outside a user gesture, and the
+    // Start Engine click is the only one guaranteed before play begins.
+    this.audio.start();
     this.input.unlock();
     this.hud.show();
     this.clock.start();
@@ -211,6 +217,8 @@ export class Game {
     this.transitioning = true;
     this.input.lock();
 
+    this.audio.whoosh();
+    this.audio.duck(true);
     await this.fade.fadeOut(550);
 
     if (showStory) {
@@ -226,6 +234,7 @@ export class Game {
     }
 
     await this.fade.fadeIn(550);
+    this.audio.duck(false);
     this.input.unlock();
     this.transitioning = false;
   }
@@ -233,9 +242,11 @@ export class Game {
   _onRoundEvent(e) {
     if (e.type === 'pickupStarted') {
       this.truck.playArmCycle();
+      this.audio.hydraulic(true);
       return;
     }
     if (e.type === 'collected') {
+      this.audio.binTip();
       this.hud.setRound(e);
       this.hud.toast(e.full
         ? `🗑️ Hopper full — return to the depot`
@@ -246,6 +257,7 @@ export class Game {
       return;
     }
     if (e.type === 'emptied') {
+      this.audio.depotDump();
       this.hud.setRound(e);
       this.hud.toast(`♻️ Tipped ${e.tipped} bins  ·  +${e.tipped * 50} bonus`);
     }
@@ -294,6 +306,11 @@ export class Game {
     }
 
     this.truckFX.update(delta, this.truck);
+    this.audio.update(delta, this.truck, this.input);
+    if (this.input.consumeMuteToggle()) {
+      const muted = this.audio.toggleMute();
+      this.hud.flashLights(muted ? '🔇 Sound off' : '🔊 Sound on');
+    }
     if (!this.transitioning) this.round.update(delta, this.truck);
     this.hud.setSpeed(this.truck.forwardSpeedKmh);
     this.miniMap.update(this.truck, this.portals);

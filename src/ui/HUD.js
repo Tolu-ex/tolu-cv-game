@@ -68,7 +68,9 @@ export class HUD {
       this._lightsEl.id = 'lights-toast';
       this.root.appendChild(this._lightsEl);
     }
-    this._lightsEl.textContent = on ? '💡 Headlights ON' : '🌑 Headlights OFF';
+    this._lightsEl.textContent = typeof on === 'string'
+      ? on
+      : (on ? '💡 Headlights ON' : '🌑 Headlights OFF');
     this._lightsEl.classList.remove('show');
     // Restart the CSS animation rather than letting it no-op on a re-add.
     void this._lightsEl.offsetWidth;

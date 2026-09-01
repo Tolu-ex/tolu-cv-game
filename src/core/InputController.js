@@ -5,6 +5,7 @@ const RIGHT_KEYS = new Set(['KeyD', 'ArrowRight']);
 const BRAKE_KEYS = new Set(['Space']);
 const LIGHT_KEYS = new Set(['KeyL']);
 const RECENTER_KEYS = new Set(['KeyC']);
+const MUTE_KEYS = new Set(['KeyM']);
 // Camera orbit on the keyboard. Drag-to-orbit is close to unusable on a laptop
 // trackpad — it needs the pad physically depressed while moving — so the
 // camera must be fully drivable without any pointer gesture at all.
@@ -44,10 +45,14 @@ export class InputController {
 
     this._lightToggleQueued = false;
     this._recenterQueued = false;
+    this._muteQueued = false;
 
     this._down = (e) => {
       if (!this.locked && LIGHT_KEYS.has(e.code)) this._lightToggleQueued = true;
       if (!this.locked && RECENTER_KEYS.has(e.code)) this._recenterQueued = true;
+      // Mute stays available even when input is locked — being unable to
+      // silence a game during a modal is genuinely irritating.
+      if (MUTE_KEYS.has(e.code)) this._muteQueued = true;
       this._set(e.code, true);
     };
     this._up = (e) => this._set(e.code, false);
@@ -146,6 +151,13 @@ export class InputController {
     return q;
   }
 
+  /** True once per M press. */
+  consumeMuteToggle() {
+    const q = this._muteQueued;
+    this._muteQueued = false;
+    return q;
+  }
+
   clearKeys() {
     this.forward = this.backward = this.left = this.right = this.brake = false;
     this.camLeft = this.camRight = this.camUp = this.camDown = false;
@@ -182,6 +194,8 @@ export class InputController {
     this.orbitDeltaX = this.orbitDeltaY = this.zoomDelta = 0;
     this._lightToggleQueued = false;
     this._recenterQueued = false;
+    // _muteQueued is deliberately NOT cleared: mute must still work while
+    // input is locked, e.g. during a story card.
   }
 
   unlock() {
