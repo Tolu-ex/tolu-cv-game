@@ -52,6 +52,21 @@ export class Truck {
     this.wheels = { steerable: [], spinning: [] };
     this.lightsOn = false;
 
+    // The visual and its handling are swappable: the tulip field is ridden on
+    // a bicycle rather than driven in the truck. Everything below is the truck
+    // profile; setProfile overwrites it.
+    this.vehicles = new Map();
+    this.activeVehicle = null;
+    this.leanGroup = null;
+    this.vehicleUpdate = null;
+    this.throttleInput = 0;
+    this.rollCoeff = 0.011;      // truck: rolls OUT of a corner
+    this.rollClamp = 0.09;
+    this.pitchCoeff = 0.004;
+    this.pitchClamp = 0.06;
+    this.leanFromLateral = null; // bike: overrides rollCoeff with a bank angle
+    this.hasReverseBeeper = true;
+
     this._buildLightRig();
   }
 
@@ -82,9 +97,8 @@ export class Truck {
     this.group.add(this.reverseLight);
   }
 
-  /** Attaches the loaded model and binds its named nodes to the rig. */
-  attachModel(scene, rig) {
-    this.model = scene;
+  /** Binds a rig's nodes to the physics. Geometry is already in the graph. */
+  _bindRig(rig) {
     this.wheels = { steerable: rig.steerable, spinning: rig.spinning };
     this.wheelRadius = rig.wheelRadius || this.wheelRadius;
     this.parts = rig.parts;
@@ -113,10 +127,82 @@ export class Truck {
     this.lampIndicator = byMat(/amber/i);
     this.lampHead = byMat(/lamp-warm/i);
 
+    // Bike: everything (wheels included) hangs off a lean group, and the rig
+    // animates its own cranks and rider.
+    this.leanGroup = rig.leanGroup || null;
+    this.vehicleUpdate = rig.onUpdate ? rig.onUpdate.bind(rig) : null;
+    this.lampDynamo = rig.parts?.get('lamp') || null;
+
     this._brake = 0;
     this._rev = 0;
     this.modelReady = true;
     this.setHeadlights(this.lightsOn);
+  }
+
+  /**
+   * Swaps the handling model. Called before attaching a different vehicle;
+   * omitting the argument restores the truck.
+   */
+  setProfile(p = {}) {
+    this.maxSpeed = p.maxSpeed ?? 16;
+    this.maxReverse = p.maxReverse ?? 6;
+    this.accel = p.accel ?? 9;
+    this.brakeDecel = p.brakeDecel ?? 18;
+    this.friction = p.friction ?? 5;
+    this.maxSteer = p.maxSteer ?? 0.6;
+    this.rollCoeff = p.rollCoeff ?? 0.011;
+    this.rollClamp = p.leanClamp ?? p.rollClamp ?? 0.09;
+    this.pitchCoeff = p.pitchCoeff ?? 0.004;
+    this.pitchClamp = p.pitchClamp ?? 0.06;
+    this.leanFromLateral = p.leanFromLateral ?? null;
+    this.steerLimitFromSpeed = p.steerLimitFromSpeed ?? null;
+    this.hasReverseBeeper = p.hasReverseBeeper ?? true;
+    this.audioProfile = p.audio ?? 'truck';
+    this.cameraFraming = p.camera ?? null;
+
+    // Carry no motion across a swap, or the new vehicle inherits the old
+    // one's lean and pitch on its first frame.
+    this.pitch = this.roll = this.pitchVel = this.rollVel = 0;
+    this.speed = 0;
+    this.steerAngle = 0;
+    this.beta = 0;
+    this.yawRate = 0;
+    this.lateralAccel = 0;
+    this._prevSpeed = 0;
+  }
+
+  /**
+   * Builds a vehicle and keeps it parked in the graph, hidden.
+   *
+   * Both vehicles are constructed once and toggled by visibility rather than
+   * added and removed. The truck's rig repivots its wheel nodes out of the GLB
+   * as it is built, so that construction cannot be repeated on the same model.
+   *
+   * @param buildFn receives { group, body } and returns { rig, profile }
+   */
+  registerVehicle(name, buildFn) {
+    const beforeG = new Set(this.group.children);
+    const beforeB = new Set(this.body.children);
+    const { rig, profile } = buildFn({ group: this.group, body: this.body });
+    const nodes = [
+      ...this.group.children.filter((c) => !beforeG.has(c)),
+      ...this.body.children.filter((c) => !beforeB.has(c)),
+    ];
+    for (const n of nodes) n.visible = false;
+    this.vehicles.set(name, { rig, profile, nodes });
+    return name;
+  }
+
+  /** Switches which registered vehicle the player is on. */
+  setVehicle(name) {
+    if (!this.vehicles.has(name) || this.activeVehicle === name) return;
+    for (const [key, v] of this.vehicles) {
+      for (const n of v.nodes) n.visible = key === name;
+    }
+    const v = this.vehicles.get(name);
+    this.setProfile(v.profile);
+    this._bindRig(v.rig);
+    this.activeVehicle = name;
   }
 
   // --- Public API ----------------------------------------------------------
@@ -132,7 +218,11 @@ export class Truck {
 
   setHeadlights(on) {
     this.lightsOn = !!on;
-    this.headlights.forEach(({ spot }) => { spot.intensity = on ? 110 : 0; });
+    // The truck's twin beams would look absurd bolted to a bicycle, so on the
+    // bike the spots stay dark and a single dynamo lamp lights instead.
+    const beam = this.leanGroup ? 0 : 110;
+    this.headlights.forEach(({ spot }) => { spot.intensity = on ? beam : 0; });
+    if (this.lampDynamo) this.lampDynamo.material.emissiveIntensity = on ? 1.1 : 0;
     for (const m of this.lampHead || []) {
       const v = on ? 1.0 : 0.74;
       m.material.color.setRGB(v, v * 0.94, v * 0.76);
@@ -165,6 +255,7 @@ export class Truck {
     this._elapsed += delta;
 
     const throttle = (input.forward ? 1 : 0) - (input.backward ? 1 : 0);
+    this.throttleInput = throttle;
     const braking = input.brake;
 
     if (throttle > 0) this.speed += this.accel * delta;
@@ -188,6 +279,8 @@ export class Truck {
     this._updateSuspension(delta);
     this._updateWheels(delta);
     this._updateLights(delta, throttle, braking);
+    // Vehicle-specific motion (the bike's cranks and the rider's legs).
+    if (this.vehicleUpdate) this.vehicleUpdate(delta, this);
   }
 
   /**
@@ -217,7 +310,13 @@ export class Truck {
     const speedFrac = THREE.MathUtils.clamp(absV / this.maxSpeed, 0, 1);
 
     // Speed-sensitive lock. Uses |v| so it behaves identically in reverse.
-    const lockLimit = this.maxSteer * (1 - 0.5 * speedFrac);
+    // A truck tapers its lock linearly with speed. A bicycle cannot: with a
+    // 1.1 m wheelbase, even a small steer angle at speed implies a corner no
+    // bike could hold, so the bike derives its limit from the lean angle it is
+    // physically able to carry (a_max = g*tan(lean_max), R = v^2/a_max).
+    const lockLimit = this.steerLimitFromSpeed
+      ? Math.min(this.maxSteer, this.steerLimitFromSpeed(absV))
+      : this.maxSteer * (1 - 0.5 * speedFrac);
     const target = THREE.MathUtils.clamp(steerInput * this.maxSteer, -lockLimit, lockLimit);
     const STEER_RATE = 1.9;                       // rad/s at the road wheels
     const dSteer = THREE.MathUtils.clamp(target - this.steerAngle, -STEER_RATE * delta, STEER_RATE * delta);
@@ -289,15 +388,21 @@ export class Truck {
     // travel while hard braking pegs the nose down. Larger values pin the body
     // at its clamp the whole time you hold W, which reads as permanently
     // nose-up.
-    const pitchTarget = THREE.MathUtils.clamp(-accel * 0.004, -0.06, 0.06);
+    const pitchTarget = THREE.MathUtils.clamp(
+      -accel * this.pitchCoeff, -this.pitchClamp, this.pitchClamp);
 
     // Roll follows real lateral acceleration (a = v * yawRate), not the raw
     // key press. Driving it from input made the body lean the instant a key
     // went down — before the truck had begun to turn — and snap upright the
     // instant it came up, while the truck was still arcing. The lean was
     // desynchronised from the actual corner, which is what read as wrong.
+    // A truck rolls away from the corner on its springs. A bicycle banks into
+    // it — same input, opposite sign and a far larger angle — so the bike
+    // supplies its own bank function instead of a spring coefficient.
     const aLat = this.lateralAccel || 0;
-    const rollTarget = THREE.MathUtils.clamp(aLat * 0.011, -0.09, 0.09);
+    const rollTarget = this.leanFromLateral
+      ? THREE.MathUtils.clamp(this.leanFromLateral(aLat), -this.rollClamp, this.rollClamp)
+      : THREE.MathUtils.clamp(aLat * this.rollCoeff, -this.rollClamp, this.rollClamp);
 
     const stiffness = 120;
     const damping = 15;
@@ -308,9 +413,16 @@ export class Truck {
 
     // No idle shake: a diesel vibrates at a standstill, an electric drivetrain
     // is dead still, and that stillness is part of how an EV reads.
-    this.body.rotation.x = this.pitch;
-    this.body.rotation.z = this.roll;
-    this.body.position.y = -Math.abs(this.pitch) * 0.12;
+    // The truck leans only its sprung mass; the bike leans as one rigid body,
+    // wheels included, so it tilts the whole lean group instead.
+    if (this.leanGroup) {
+      this.leanGroup.rotation.z = this.roll;
+      this.leanGroup.rotation.x = this.pitch;
+    } else {
+      this.body.rotation.x = this.pitch;
+      this.body.rotation.z = this.roll;
+      this.body.position.y = -Math.abs(this.pitch) * 0.12;
+    }
   }
 
   /**

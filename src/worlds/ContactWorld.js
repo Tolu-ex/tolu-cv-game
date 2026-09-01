@@ -142,14 +142,6 @@ export function buildContactWorld() {
   sun.position.set(-50, 35, 40);
   group.add(sun, sun.target);
 
-  // Bins along the field track.
-  const binSpots = [];
-  for (let i = 0; i < 6; i++) {
-    const z = -38 + i * 15;
-    binSpots.push({ x: 4.6, z });
-    binSpots.push({ x: -4.6, z: z + 7 });
-  }
-
   return {
     group,
     name: '🌷 Contact',
@@ -161,8 +153,10 @@ export function buildContactWorld() {
     bounds,
     mapExtent: 80,
     mapViewRadius: 55,
-    binSpots,
-    depot: { x: 0, z: 50 },
+    // No refuse round here. This is the closing world — a tulip field, not a
+    // collection route — so there are no bins, no hopper and no depot. You
+    // freewheel it on a bike instead of the truck.
+    vehicle: 'bike',
     spawn: new THREE.Vector3(0, 0, 55),
     heading: Math.PI,
     portals: [

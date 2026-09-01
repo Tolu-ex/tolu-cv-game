@@ -261,9 +261,16 @@ export class AudioEngine {
    * audio parameter once per frame produces audible zipper noise, whereas a
    * short time-constant glides between values.
    */
+  /** Switches the drivetrain sound. A bicycle has no motor to hum. */
+  setVehicle(kind) {
+    this.vehicle = kind || 'truck';
+    this._freewheel = 0;
+  }
+
   update(delta, truck, input) {
     if (!this.ready || this.muted) return;
     const ctx = this.ctx, t = ctx.currentTime;
+    if (this.vehicle === 'bike') return this._updateBike(delta, truck, input, t);
 
     const speed = Math.abs(truck.speed);
     const frac = Math.min(speed / truck.maxSpeed, 1);
@@ -311,6 +318,39 @@ export class AudioEngine {
       this._tone({ freq: 2100, duration: 0.035, gain: 0.05, type: 'square' });
     }
     this._lastIndicatorOn = blinkOn;
+  }
+
+  /**
+   * Bicycle: no motor at all. What you actually hear riding an omafiets is
+   * tyres on the track, a little wind, and the freewheel ticking whenever you
+   * stop pedalling — that tick is the sound people recognise a bike by.
+   */
+  _updateBike(delta, truck, input, t) {
+    const speed = Math.abs(truck.speed);
+    const frac = Math.min(speed / truck.maxSpeed, 1);
+    const throttle = (input.forward ? 1 : 0) - (input.backward ? 1 : 0);
+
+    this.motorGain.gain.setTargetAtTime(0, t, 0.12);
+
+    // Tyres on a dirt field track: darker and softer than tarmac.
+    this.tyreGain.gain.setTargetAtTime(frac * 0.11, t, 0.12);
+    this.tyreFilter.frequency.setTargetAtTime(180 + frac * 340, t, 0.12);
+    this.windGain.gain.setTargetAtTime(Math.max(0, frac - 0.35) * 0.14, t, 0.2);
+
+    // Freewheel: ticks only while coasting, at a rate set by wheel speed.
+    const coasting = throttle === 0 && speed > 0.4;
+    if (coasting) {
+      this._freewheel = (this._freewheel ?? 0) + speed * delta;
+      const spacing = 0.085;          // metres of travel between pawl clicks
+      while (this._freewheel > spacing) {
+        this._freewheel -= spacing;
+        this._tone({ freq: 2600 + Math.random() * 400, duration: 0.012, gain: 0.022, type: 'square' });
+      }
+    } else {
+      this._freewheel = 0;
+    }
+
+    this._prevSpeed = speed;
   }
 
   // --- Control -------------------------------------------------------------

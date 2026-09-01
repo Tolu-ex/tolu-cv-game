@@ -4,6 +4,7 @@ import { ChaseCamera } from './ChaseCamera.js';
 import { FadeTransition } from './FadeTransition.js';
 import { Truck } from '../entities/Truck.js';
 import { loadTruckModel, buildRigFromModel, applyToonShading } from '../entities/truck/model.js';
+import { buildBike } from '../entities/bike/model.js';
 import { TruckFX } from '../entities/TruckFX.js';
 import { Portal } from '../entities/Portal.js';
 import { HUD } from '../ui/HUD.js';
@@ -31,6 +32,15 @@ const WORLD_REGISTRY = {
   market: buildStreetMarketWorld,
   singapore: buildSingaporeWorld,
   contact: buildContactWorld,
+};
+
+// The truck's handling. Kept here beside the bike's so the two are readable
+// against each other; the bike supplies its own in bike/model.js.
+const TRUCK_PROFILE = {
+  maxSpeed: 16, maxReverse: 6, accel: 9, brakeDecel: 18, friction: 5,
+  maxSteer: 0.6, rollCoeff: 0.011, rollClamp: 0.09,
+  pitchCoeff: 0.004, pitchClamp: 0.06, hasReverseBeeper: true, audio: 'truck',
+  camera: { distance: 12, height: 5.2, lookHeight: 1.6, swing: 2.4 },
 };
 
 // Fixed per-world seed for decorative scatter.
@@ -116,12 +126,19 @@ export class Game {
     // frame. Everything else in the game is procedural and needs no fetch.
     try {
       const scene = await loadTruckModel();
-      const rig = buildRigFromModel(scene, { bodyGroup: this.truck.body, rootGroup: this.truck.group });
-      applyToonShading(scene);
-      this.truck.attachModel(scene, rig);
+      this.truck.registerVehicle('truck', ({ group, body }) => {
+        const rig = buildRigFromModel(scene, { bodyGroup: body, rootGroup: group });
+        applyToonShading(scene);
+        return { rig, profile: TRUCK_PROFILE };
+      });
     } catch (err) {
       console.error('Truck model failed to load', err);
     }
+
+    // The bicycle is procedural, so it costs nothing to build up front and sit
+    // hidden until the tulip field asks for it.
+    this.truck.registerVehicle('bike', ({ group }) => buildBike({ rootGroup: group }));
+    this.truck.setVehicle('truck');
 
     this._loadWorldSync('hub');
     this.hud.setProgress(0, THEMED_WORLD_IDS.length);
@@ -172,6 +189,10 @@ export class Game {
     this.scene.background = new THREE.Color(desc.sky);
     this.scene.fog = new THREE.Fog(desc.fog, desc.fogNear ?? 40, desc.fogFar ?? 200);
 
+    // Some worlds are ridden rather than driven.
+    this.truck.setVehicle(desc.vehicle || 'truck');
+    this.audio.setVehicle(this.truck.audioProfile);
+    this.chaseCam.setFraming(this.truck.cameraFraming);
     this.truck.setHeadlights(!!desc.night);
     this.truckFX.setDustColor(desc.dustColor ?? 0xcfc4a8);
 
