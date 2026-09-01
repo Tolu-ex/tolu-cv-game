@@ -12,7 +12,8 @@ import { MiniMap } from '../ui/MiniMap.js';
 import { RoundManager } from './RoundManager.js';
 import { AudioEngine } from '../audio/AudioEngine.js';
 import { CV_DATA } from '../data/cvData.js';
-import { disposeObject3D } from '../utils/geoBuilders.js';
+import { disposeObject3D, seedDecor } from '../utils/geoBuilders.js';
+import { seededRandom } from '../utils/rng.js';
 
 import { buildHubWorld, HUB_PORTAL_DEFS } from '../worlds/HubWorld.js';
 import { buildHaarlemWorld } from '../worlds/HaarlemWorld.js';
@@ -30,6 +31,11 @@ const WORLD_REGISTRY = {
   market: buildStreetMarketWorld,
   singapore: buildSingaporeWorld,
   contact: buildContactWorld,
+};
+
+// Fixed per-world seed for decorative scatter.
+const WORLD_SEEDS = {
+  hub: 42, haarlem: 7, ileife: 19, lagos: 31, market: 53, singapore: 64, contact: 88,
 };
 
 const THEMED_WORLD_IDS = ['haarlem', 'ileife', 'lagos', 'market', 'singapore', 'contact'];
@@ -151,6 +157,9 @@ export class Game {
 
   _loadWorldSync(id, { fromPortal = null } = {}) {
     const builder = WORLD_REGISTRY[id];
+    // Decorative scatter is seeded from the world id, so leaving a world and
+    // driving back in rebuilds exactly the same foliage and lit windows.
+    seedDecor(WORLD_SEEDS[id] ?? 1);
     const desc = builder();
 
     this._clearCurrentWorld();
@@ -189,7 +198,9 @@ export class Game {
       this.portals.push(portal);
     }
 
-    this.round.build(desc);
+    // Seeded from the world id so each bin keeps its waste stream — and so its
+    // colour — every time the player drives back into this world.
+    this.round.build(desc, seededRandom(WORLD_SEEDS[id] ?? 1));
     this.hud.setRound({
       score: this.round.score,
       load: this.round.load,

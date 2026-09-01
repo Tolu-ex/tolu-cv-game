@@ -16,7 +16,6 @@ function marinaBaySands() {
     const mat = new THREE.MeshStandardMaterial({ color: C.tower, roughness: 0.5, metalness: 0.3, flatShading: true, emissiveMap: tex, emissive: 0xffffff, emissiveIntensity: 0.6 });
     const tower = new THREE.Mesh(new THREE.BoxGeometry(towerW, towerH, 5), mat);
     tower.position.set(x, towerH / 2, 0);
-    tower.castShadow = true; tower.receiveShadow = true;
     g.add(tower);
     towers.push(tower);
   }
@@ -26,19 +25,19 @@ function marinaBaySands() {
 
   // "Skypark" — the boat-shaped deck bridging all three towers
   const deckW = 8 * 2 + towerW + 2.5;
-  const deck = mesh(new THREE.BoxGeometry(deckW, 1.2, 5.4), 0xb7bec9, { roughness: 0.4, metalness: 0.4 });
+  const deck = mesh(new THREE.BoxGeometry(deckW, 1.2, 5.4), 0xb7bec9);
   deck.position.set(0, towerH + 1.0, 0);
   g.add(deck);
-  const deckUnderside = mesh(new THREE.BoxGeometry(deckW - 0.8, 0.5, 4.8), 0x555b66, { roughness: 0.5, metalness: 0.5 });
+  const deckUnderside = mesh(new THREE.BoxGeometry(deckW - 0.8, 0.5, 4.8), 0x555b66);
   deckUnderside.position.set(0, towerH + 0.35, 0);
   g.add(deckUnderside);
   // The deck's overhanging "prow" at one end
-  const prow = mesh(new THREE.BoxGeometry(3.4, 0.9, 4.6), 0xb7bec9, { roughness: 0.4, metalness: 0.4 });
+  const prow = mesh(new THREE.BoxGeometry(3.4, 0.9, 4.6), 0xb7bec9);
   prow.position.set(deckW / 2 + 1.4, towerH + 1.0, 0);
   g.add(prow);
   // rails + rooftop lights along the deck
   for (let i = -deckW / 2 + 1; i <= deckW / 2 - 1; i += 2.4) {
-    const rail = mesh(new THREE.BoxGeometry(0.12, 0.6, 5.2), 0xd8dde3, { roughness: 0.4, metalness: 0.5 });
+    const rail = mesh(new THREE.BoxGeometry(0.12, 0.6, 5.2), 0xd8dde3);
     rail.position.set(i, towerH + 1.9, 0);
     g.add(rail);
   }
@@ -46,7 +45,6 @@ function marinaBaySands() {
   glow.position.set(0, towerH + 2.5, 0);
   g.add(glow);
 
-  g.traverse((o) => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } });
   return g;
 }
 
@@ -55,9 +53,8 @@ export function buildSingaporeWorld() {
   const rand = seededRandom(64);
   const bounds = 66;
 
-  const boardwalk = mesh(new THREE.PlaneGeometry(150, 190), C.boardwalk, { roughness: 0.8 });
+  const boardwalk = mesh(new THREE.PlaneGeometry(150, 190), C.boardwalk);
   boardwalk.rotation.x = -Math.PI / 2;
-  boardwalk.receiveShadow = true;
   group.add(boardwalk);
 
   // Bay water on the west side, reflective and dark
@@ -69,12 +66,12 @@ export function buildSingaporeWorld() {
   group.add(water);
 
   // Central promenade path
-  const path = mesh(new THREE.PlaneGeometry(8, 180), 0x3d3f4d, { roughness: 0.6 });
+  const path = mesh(new THREE.PlaneGeometry(8, 180), 0x3d3f4d);
   path.rotation.x = -Math.PI / 2;
   path.position.y = 0.015;
   group.add(path);
   for (let z = -80; z < 80; z += 4) {
-    const tile = mesh(new THREE.PlaneGeometry(0.06, 3.4), 0x565a6c, { roughness: 0.4, emissive: 0x8fa0ff, emissiveIntensity: 0.15 });
+    const tile = mesh(new THREE.PlaneGeometry(0.06, 3.4), 0x565a6c, { emissive: 0x8fa0ff, emissiveIntensity: 0.15 });
     tile.rotation.x = -Math.PI / 2;
     tile.position.set(0, 0.02, z);
     group.add(tile);
@@ -127,17 +124,11 @@ export function buildSingaporeWorld() {
   group.add(stars);
 
   // Night lighting — bright enough to read the landmarks against the bay
-  const hemi = new THREE.HemisphereLight(0x4a63b0, 0x141a30, 1.5);
+  const hemi = new THREE.HemisphereLight(0x4a63b0, 0x141a30, 0.42);
   group.add(hemi);
-  group.add(new THREE.AmbientLight(0x7080c0, 0.85));
-  const moon = new THREE.DirectionalLight(0xcfe0ff, 1.2);
+  group.add(new THREE.AmbientLight(0x7080c0, 0.32));
+  const moon = new THREE.DirectionalLight(0xcfe0ff, 0.36);
   moon.position.set(30, 70, -30);
-  moon.castShadow = true;
-  moon.shadow.mapSize.set(1536, 1536);
-  moon.shadow.camera.left = -90; moon.shadow.camera.right = 90;
-  moon.shadow.camera.top = 90; moon.shadow.camera.bottom = -90;
-  moon.shadow.camera.far = 220;
-  moon.shadow.bias = -0.0006;
   group.add(moon, moon.target);
 
   // Bins along the promenade edges.

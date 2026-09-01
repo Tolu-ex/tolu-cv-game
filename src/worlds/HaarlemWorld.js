@@ -27,43 +27,41 @@ function clockTexture() {
 
 function towerBuilding({ width = 6.5, depth = 6.5, height = 22, spireHeight = 12, color = C.brick } = {}) {
   const g = new THREE.Group();
-  const body = mesh(new THREE.BoxGeometry(width, height, depth), color, { roughness: 0.9 });
+  const body = mesh(new THREE.BoxGeometry(width, height, depth), color);
   body.position.y = height / 2;
   g.add(body);
   const clockFace = new THREE.Mesh(new THREE.CircleGeometry(width * 0.28, 20), new THREE.MeshStandardMaterial({ map: clockTexture(), roughness: 0.6 }));
   clockFace.position.set(0, height * 0.78, depth / 2 + 0.05);
   g.add(clockFace);
-  const spire = mesh(new THREE.ConeGeometry(width * 0.62, spireHeight, 4), C.roofSlate, { roughness: 0.7, metalness: 0.2 });
+  const spire = mesh(new THREE.ConeGeometry(width * 0.62, spireHeight, 4), C.roofSlate);
   spire.rotation.y = Math.PI / 4;
   spire.position.y = height + spireHeight / 2;
   g.add(spire);
-  const finial = mesh(new THREE.SphereGeometry(0.3, 8, 8), 0xd4af37, { roughness: 0.3, metalness: 0.8 });
+  const finial = mesh(new THREE.SphereGeometry(0.3, 8, 8), 0xd4af37);
   finial.position.y = height + spireHeight + 0.3;
   g.add(finial);
-  g.traverse((o) => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } });
   return g;
 }
 
 function domeBuilding({ radius = 6, height = 10, color = 0x8c3a24 } = {}) {
   const g = new THREE.Group();
-  const drum = mesh(new THREE.CylinderGeometry(radius, radius, height, 16), color, { roughness: 0.9 });
+  const drum = mesh(new THREE.CylinderGeometry(radius, radius, height, 16), color);
   drum.position.y = height / 2;
   g.add(drum);
-  const dome = mesh(new THREE.SphereGeometry(radius * 1.02, 16, 10, 0, Math.PI * 2, 0, Math.PI / 2), 0x5a4a3a, { roughness: 0.7 });
+  const dome = mesh(new THREE.SphereGeometry(radius * 1.02, 16, 10, 0, Math.PI * 2, 0, Math.PI / 2), 0x5a4a3a);
   dome.position.y = height;
   g.add(dome);
-  const lantern = mesh(new THREE.CylinderGeometry(0.5, 0.5, 1.4, 8), 0xe9dfc4, { roughness: 0.7 });
+  const lantern = mesh(new THREE.CylinderGeometry(0.5, 0.5, 1.4, 8), 0xe9dfc4);
   lantern.position.y = height + radius + 0.7;
   g.add(lantern);
   // ring of small windows around the drum
   for (let i = 0; i < 12; i++) {
     const a = (i / 12) * Math.PI * 2;
-    const win = mesh(new THREE.PlaneGeometry(0.6, 1.4), 0x1c2b33, { roughness: 0.3, emissive: 0xfff2c9, emissiveIntensity: 0.2, castShadow: false, receiveShadow: false });
+    const win = mesh(new THREE.PlaneGeometry(0.6, 1.4), 0x1c2b33, { emissive: 0xfff2c9, emissiveIntensity: 0.2, castShadow: false, receiveShadow: false });
     win.position.set(Math.sin(a) * (radius + 0.02), height * 0.55, Math.cos(a) * (radius + 0.02));
     win.rotation.y = a;
     g.add(win);
   }
-  g.traverse((o) => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } });
   return g;
 }
 
@@ -73,30 +71,29 @@ export function buildHaarlemWorld() {
   const bounds = 66;
 
   // Cobblestone plaza ground
-  const ground = mesh(new THREE.PlaneGeometry(160, 190), C.cobble, { roughness: 1 });
+  const ground = mesh(new THREE.PlaneGeometry(160, 190), C.cobble);
   ground.rotation.x = -Math.PI / 2;
-  ground.receiveShadow = true;
   group.add(ground);
 
   // Canal running north-south
-  const canal = mesh(new THREE.PlaneGeometry(11, 150), C.canal, { roughness: 0.25, metalness: 0.1, emissive: C.canal, emissiveIntensity: 0.08 });
+  const canal = mesh(new THREE.PlaneGeometry(11, 150), C.canal, { emissive: C.canal, emissiveIntensity: 0.08 });
   canal.rotation.x = -Math.PI / 2;
   canal.position.y = 0.02;
   group.add(canal);
   const canalEdgeMat = 0xb9b2a0;
   for (const side of [-1, 1]) {
-    const edge = mesh(new THREE.BoxGeometry(0.4, 0.3, 150), canalEdgeMat, { roughness: 0.9 });
+    const edge = mesh(new THREE.BoxGeometry(0.4, 0.3, 150), canalEdgeMat);
     edge.position.set(side * 5.7, 0.15, 0);
     group.add(edge);
 
     // Cobbled street between the canal edge and the house fronts
-    const street = mesh(new THREE.PlaneGeometry(6.6, 150), 0x7e848c, { roughness: 1 });
+    const street = mesh(new THREE.PlaneGeometry(6.6, 150), 0x7e848c);
     street.rotation.x = -Math.PI / 2;
     street.position.set(side * 9.2, 0.025, 0);
     group.add(street);
 
     // Sidewalk strip in front of the houses
-    const walk = mesh(new THREE.PlaneGeometry(1.2, 150), 0xa8a49a, { roughness: 1 });
+    const walk = mesh(new THREE.PlaneGeometry(1.2, 150), 0xa8a49a);
     walk.rotation.x = -Math.PI / 2;
     walk.position.set(side * 13.1, 0.03, 0);
     group.add(walk);
@@ -104,15 +101,15 @@ export function buildHaarlemWorld() {
 
   // Bridges crossing the canal
   for (const z of [-22, 24]) {
-    const deck = mesh(new THREE.BoxGeometry(14, 0.4, 6), 0x8a6a45, { roughness: 0.85 });
+    const deck = mesh(new THREE.BoxGeometry(14, 0.4, 6), 0x8a6a45);
     deck.position.set(0, 0.35, z);
     group.add(deck);
     for (const side of [-1, 1]) {
-      const rail = mesh(new THREE.BoxGeometry(14, 0.5, 0.12), 0x4a3826, { roughness: 0.8 });
+      const rail = mesh(new THREE.BoxGeometry(14, 0.5, 0.12), 0x4a3826);
       rail.position.set(0, 0.75, z + side * 2.9);
       group.add(rail);
     }
-    const arch = mesh(new THREE.TorusGeometry(5.2, 0.35, 6, 16, Math.PI), 0x8a6a45, { roughness: 0.85 });
+    const arch = mesh(new THREE.TorusGeometry(5.2, 0.35, 6, 16, Math.PI), 0x8a6a45);
     arch.rotation.x = Math.PI / 2;
     arch.rotation.z = Math.PI;
     arch.position.set(0, -0.4, z);
@@ -181,16 +178,11 @@ export function buildHaarlemWorld() {
   }
 
   // Lighting — soft, slightly overcast Dutch daylight
-  const hemi = new THREE.HemisphereLight(0xd9e6ee, 0x8a8f78, 0.7);
+  group.add(new THREE.AmbientLight(0xffffff, 0.52));
+  const hemi = new THREE.HemisphereLight(0xd9e6ee, 0x8a8f78, 0.42);
   group.add(hemi);
-  const sun = new THREE.DirectionalLight(0xfff2df, 1.1);
+  const sun = new THREE.DirectionalLight(0xfff2df, 0.55);
   sun.position.set(-40, 60, 30);
-  sun.castShadow = true;
-  sun.shadow.mapSize.set(2048, 2048);
-  sun.shadow.camera.left = -90; sun.shadow.camera.right = 90;
-  sun.shadow.camera.top = 90; sun.shadow.camera.bottom = -90;
-  sun.shadow.camera.far = 220;
-  sun.shadow.bias = -0.0006;
   group.add(sun, sun.target);
 
   // Bins set out along the house fronts on both banks, clear of the canal

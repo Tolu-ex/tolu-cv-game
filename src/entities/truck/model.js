@@ -176,8 +176,6 @@ export function applyToonShading(scene) {
       else if (o.material.length === 1) o.material = o.material[0];
     }
 
-    o.castShadow = false;
-    o.receiveShadow = false;
   });
   return converted.size;
 }

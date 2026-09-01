@@ -20,8 +20,6 @@ function createTulipField({ bands = 6, rowsPerBand = 6, perRow = 26, spacing = 1
     const count = rowsPerBand * perRow;
     const stems = new THREE.InstancedMesh(stemGeo, stemMat, count);
     const bulbs = new THREE.InstancedMesh(bulbGeo, bulbMat, count);
-    stems.castShadow = false; stems.receiveShadow = false;
-    bulbs.castShadow = true; bulbs.receiveShadow = false;
 
     let i = 0;
     for (let r = 0; r < rowsPerBand; r++) {
@@ -74,13 +72,12 @@ export function buildContactWorld() {
   const rand = seededRandom(77);
   const bounds = 62;
 
-  const ground = mesh(new THREE.PlaneGeometry(150, 180), 0x2f6f2f, { roughness: 1 });
+  const ground = mesh(new THREE.PlaneGeometry(150, 180), 0x2f6f2f);
   ground.rotation.x = -Math.PI / 2;
-  ground.receiveShadow = true;
   group.add(ground);
 
   // Central path through the fields
-  const path = mesh(new THREE.PlaneGeometry(6, 170), 0xcabf98, { roughness: 1 });
+  const path = mesh(new THREE.PlaneGeometry(6, 170), 0xcabf98);
   path.rotation.x = -Math.PI / 2;
   path.position.y = 0.012;
   group.add(path);
@@ -99,7 +96,7 @@ export function buildContactWorld() {
 
   // Grassy verges separating the flower blocks
   for (const side of [-1, 1]) {
-    const verge = mesh(new THREE.PlaneGeometry(4, 170), 0x2a6a2a, { roughness: 1 });
+    const verge = mesh(new THREE.PlaneGeometry(4, 170), 0x2a6a2a);
     verge.rotation.x = -Math.PI / 2;
     verge.position.set(side * 31, 0.014, 0);
     group.add(verge);
@@ -118,11 +115,11 @@ export function buildContactWorld() {
   const card = new THREE.Mesh(new THREE.PlaneGeometry(11, 6), cardMat);
   card.position.set(0, 5.4, CARD_Z);
   group.add(card);
-  const cardFrame = mesh(new THREE.BoxGeometry(11.4, 6.4, 0.2), 0x1c3a20, { roughness: 0.7 });
+  const cardFrame = mesh(new THREE.BoxGeometry(11.4, 6.4, 0.2), 0x1c3a20);
   cardFrame.position.set(0, 5.4, CARD_Z - 0.14);
   group.add(cardFrame);
   for (const side of [-1, 1]) {
-    const post = mesh(new THREE.CylinderGeometry(0.18, 0.18, 5.4, 6), 0x4a3826, { roughness: 0.9 });
+    const post = mesh(new THREE.CylinderGeometry(0.18, 0.18, 5.4, 6), 0x4a3826);
     post.position.set(side * 4.6, 2.7, CARD_Z - 0.14);
     group.add(post);
   }
@@ -132,22 +129,17 @@ export function buildContactWorld() {
 
   // A handful of low bushes for framing
   for (let i = 0; i < 8; i++) {
-    const bush = mesh(new THREE.IcosahedronGeometry(0.8 + rand() * 0.4, 0), 0x3f8f3f, { roughness: 0.9 });
+    const bush = mesh(new THREE.IcosahedronGeometry(0.8 + rand() * 0.4, 0), 0x3f8f3f);
     bush.position.set((rand() - 0.5) * 40, 0.5, -55 - rand() * 5);
     group.add(bush);
   }
 
   // Warm golden-hour lighting
-  const hemi = new THREE.HemisphereLight(0xffd9a0, C.field, 0.7);
+  group.add(new THREE.AmbientLight(0xffe8cc, 0.50));
+  const hemi = new THREE.HemisphereLight(0xffd9a0, C.field, 0.42);
   group.add(hemi);
-  const sun = new THREE.DirectionalLight(0xffb877, 1.4);
+  const sun = new THREE.DirectionalLight(0xffb877, 0.58);
   sun.position.set(-50, 35, 40);
-  sun.castShadow = true;
-  sun.shadow.mapSize.set(2048, 2048);
-  sun.shadow.camera.left = -85; sun.shadow.camera.right = 85;
-  sun.shadow.camera.top = 85; sun.shadow.camera.bottom = -85;
-  sun.shadow.camera.far = 210;
-  sun.shadow.bias = -0.0006;
   group.add(sun, sun.target);
 
   // Bins along the field track.

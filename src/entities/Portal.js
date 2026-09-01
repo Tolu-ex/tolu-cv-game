@@ -56,7 +56,7 @@ export class Portal {
 
     const legGeo = new THREE.CylinderGeometry(0.35, 0.4, this.radius * 2, 8);
     for (const side of [-1, 1]) {
-      const leg = mesh(legGeo, 0x1c1e22, { roughness: 0.4, metalness: 0.6 });
+      const leg = mesh(legGeo, 0x1c1e22);
       leg.position.set(side * this.radius * 0.62, this.radius, 0);
       g.add(leg);
       const glowStrip = mesh(new THREE.CylinderGeometry(0.42, 0.46, this.radius * 1.9, 8), ringColor, {
@@ -67,7 +67,7 @@ export class Portal {
     }
 
     const archGeo = new THREE.TorusGeometry(this.radius * 0.66, 0.42, 8, 20, Math.PI);
-    const arch = mesh(archGeo, 0x1c1e22, { roughness: 0.4, metalness: 0.6 });
+    const arch = mesh(archGeo, 0x1c1e22);
     arch.position.set(0, this.radius * 1.62, 0);
     arch.rotation.z = Math.PI;
     g.add(arch);
@@ -118,7 +118,6 @@ export class Portal {
     g.add(light);
     this.light = light;
 
-    g.traverse((o) => { if (o.isMesh) { o.castShadow = false; } });
     return g;
   }
 
