@@ -52,14 +52,18 @@ export function buildRigFromModel(scene, { bodyGroup, rootGroup }) {
   scene.traverse((o) => { if (o.name) byName.set(o.name, o); });
 
   const wheelsGroup = byName.get('wheels');
-  const rig = { steerable: [], spinning: [], wheelRadius: 0.5, arm: null, parts: byName };
+  const rig = {
+    steerable: [], spinning: [], wheelInfo: [],
+    wheelRadius: 0.5, wheelbase: 4.5, track: 2.2, frontAxleZ: 2.4, rearAxleZ: -2.1,
+    arm: null, parts: byName,
+  };
 
   // Wheels are unsprung: they hang off the root so the body can lean
   // independently of them.
   if (wheelsGroup) {
     const wheelNodes = [...wheelsGroup.children];
     for (const wheel of wheelNodes) {
-      const { pivot, radius } = repivot(wheel, rootGroup);
+      const { pivot, centre, radius } = repivot(wheel, rootGroup);
       rig.wheelRadius = Math.max(rig.wheelRadius, radius);
 
       // Steering pivot wraps the spin pivot, so steer and roll compose rather
@@ -70,10 +74,28 @@ export function buildRigFromModel(scene, { bodyGroup, rootGroup }) {
       rootGroup.add(steer);
       steer.add(pivot);
 
-      if (/front/i.test(wheel.name)) rig.steerable.push(steer);
+      const isFront = /front/i.test(wheel.name);
+      // Left/right from the geometry rather than the name, so a renamed part
+      // cannot silently flip a wheel to the wrong side.
+      const side = Math.sign(centre.x) || 1;
+      if (isFront) rig.steerable.push(steer);
       rig.spinning.push(pivot);
+      rig.wheelInfo.push({ steer, pivot, isFront, side, x: centre.x, z: centre.z });
     }
     wheelsGroup.parent?.remove(wheelsGroup);
+
+    // Measure the chassis rather than hard-coding it: the steering model needs
+    // a real wheelbase, and a tandem rear bogie behaves like a single axle
+    // midway between its two.
+    const fronts = rig.wheelInfo.filter((w) => w.isFront);
+    const rears = rig.wheelInfo.filter((w) => !w.isFront);
+    if (fronts.length && rears.length) {
+      const avg = (a, k) => a.reduce((s, w) => s + w[k], 0) / a.length;
+      rig.frontAxleZ = avg(fronts, 'z');
+      rig.rearAxleZ = avg(rears, 'z');
+      rig.wheelbase = rig.frontAxleZ - rig.rearAxleZ;
+      rig.track = Math.max(...fronts.map((w) => Math.abs(w.x))) * 2;
+    }
   }
 
   // Everything else is sprung mass.

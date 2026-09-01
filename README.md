@@ -84,6 +84,34 @@ not just on at night. Brake lamps respond to braking, reversing lamps throw a
 pool of light behind the truck, and the indicators blink at ~1.5 Hz (the real
 automotive rate) on whichever side you are steering toward.
 
+**Steering.** A kinematic **bicycle model**, not direct heading rotation. The
+earlier version did `heading += steerInput * turnRate * delta`, which is how a
+tank turns — the truck pivoted about its own centre and could spin on the spot.
+
+A real vehicle pivots about a point on the extension of its rear axle, and that
+geometry gives three things no amount of tuning the old version could:
+
+- turning radius `R = wheelbase / tan(steer)`, so a long truck genuinely *is*
+  long and cannot be tuned to feel short
+- **off-tracking** — the rear wheels cut inside the fronts through a corner,
+  the most recognisable thing about watching a truck turn
+- yaw rate proportional to speed, so it must be rolling to turn
+
+Wheelbase (5.8 m) and track (2.37 m) are measured off the model at load rather
+than hard-coded, and the front wheels use true **Ackermann** — the inner wheel
+turns further than the outer, because they travel circles of different radii
+and would otherwise scrub.
+
+Verified against the geometry rather than by feel:
+
+| test | result |
+|---|---|
+| turn on the spot | 0.0000° after 3 s at full lock, no throttle |
+| circle radius | predicted 10.81 m, measured **10.76 m** (0.4% error) |
+| off-tracking | front traces 12.19 m, rear **10.91 m** |
+| Ackermann | outer 26.4°, inner **31.9°** |
+| straight-line drift | exactly 0 over 50 m |
+
 **Feel.** Longitudinal acceleration drives pitch and cornering drives roll,
 each through a damped spring. Measured behaviour:
 

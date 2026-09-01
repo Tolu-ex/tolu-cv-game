@@ -86,6 +86,15 @@ export class Truck {
     this.wheelRadius = rig.wheelRadius || this.wheelRadius;
     this.parts = rig.parts;
 
+    // Chassis geometry, measured off the model. The steering model is built
+    // from these rather than from tuned constants, so the truck turns like the
+    // vehicle it actually is.
+    this.wheelbase = rig.wheelbase;
+    this.track = rig.track;
+    this.frontAxleZ = rig.frontAxleZ;
+    this.rearAxleZ = rig.rearAxleZ;
+    this.frontWheels = rig.wheelInfo.filter((w) => w.isFront);
+
     this.armBoom = rig.armBoom;
     this.armCarriage = rig.armCarriage;
     this.gripperJaws = [rig.gripperJawA, rig.gripperJawB].filter(Boolean);
@@ -166,18 +175,7 @@ export class Truck {
     this.speed = THREE.MathUtils.clamp(this.speed, -this.maxReverse, this.maxSpeed);
 
     const steerInput = (input.left ? 1 : 0) - (input.right ? 1 : 0);
-    const speedFactor = THREE.MathUtils.clamp(Math.abs(this.speed) / this.maxSpeed, 0.15, 1);
-    const dir = this.speed < 0 ? -1 : 1;
-    if (Math.abs(this.speed) > 0.02) {
-      this.heading += steerInput * this.turnRate * speedFactor * dir * delta;
-      this.heading = Math.atan2(Math.sin(this.heading), Math.cos(this.heading));
-    }
-    this.steerAngle = THREE.MathUtils.lerp(this.steerAngle, steerInput * this.maxSteer, 0.15);
-
-    this.position.x += Math.sin(this.heading) * this.speed * delta;
-    this.position.z += Math.cos(this.heading) * this.speed * delta;
-    this.position.x = THREE.MathUtils.clamp(this.position.x, -bounds, bounds);
-    this.position.z = THREE.MathUtils.clamp(this.position.z, -bounds, bounds);
+    this._steer(delta, steerInput, bounds);
 
     this.group.position.copy(this.position);
     this.group.rotation.y = this.heading;
@@ -185,6 +183,80 @@ export class Truck {
     this._updateSuspension(delta, steerInput);
     this._updateWheels(delta);
     this._updateLights(delta, throttle, braking);
+  }
+
+  /**
+   * Kinematic bicycle model.
+   *
+   * This replaced a model that rotated the truck about its own centre:
+   *
+   *     heading += steerInput * turnRate * speedFactor * delta
+   *
+   * which is how a tank turns, not a vehicle. A real vehicle pivots about a
+   * point on the extension of its REAR axle, and the geometry gives three
+   * things that no amount of tuning the old version could:
+   *
+   *   - turning radius R = wheelbase / tan(steer), so a long truck genuinely
+   *     feels long and cannot be tuned to feel short
+   *   - off-tracking: the rear wheels cut inside the fronts through a corner,
+   *     which is the single most recognisable thing about watching a truck turn
+   *   - yaw rate is proportional to speed, so the truck cannot pirouette on
+   *     the spot — it has to be rolling to turn, exactly like the real thing
+   *
+   * Integrated at the rear axle because that is the point the model is defined
+   * about; the body origin is then derived back from it so the visual does not
+   * shift.
+   */
+  _steer(delta, steerInput, bounds) {
+    const speedFrac = THREE.MathUtils.clamp(Math.abs(this.speed) / this.maxSpeed, 0, 1);
+
+    // Speed-sensitive steering. At full lock and speed the bicycle model gives
+    // a radius tight enough to be undriveable (and would roll a real truck),
+    // so the available lock tapers as the truck gains speed. The wheels still
+    // turn at a constant RATE — only the limit moves.
+    const lockLimit = this.maxSteer * (1 - 0.5 * speedFrac);
+    const target = THREE.MathUtils.clamp(steerInput * this.maxSteer, -lockLimit, lockLimit);
+    // Rate-limited rather than lerped, so the steering wheel moves at a
+    // believable speed instead of snapping proportionally to the error.
+    const STEER_RATE = 1.9;                       // rad/s at the road wheels
+    const dSteer = THREE.MathUtils.clamp(target - this.steerAngle, -STEER_RATE * delta, STEER_RATE * delta);
+    this.steerAngle += dSteer;
+    if (steerInput === 0) {
+      // Self-centring, as caster does on a real axle.
+      this.steerAngle = THREE.MathUtils.lerp(this.steerAngle, 0, 1 - Math.pow(0.02, delta));
+    }
+
+    const L = this.wheelbase;
+    const v = this.speed;
+
+    // Rear axle is the reference point the model is defined about.
+    const sinH = Math.sin(this.heading);
+    const cosH = Math.cos(this.heading);
+    let rx = this.position.x - this.rearAxleZ * sinH;
+    let rz = this.position.z - this.rearAxleZ * cosH;
+
+    // psi_dot = (v / L) * tan(delta). Proportional to v, which is what stops
+    // the truck turning while stationary.
+    this.yawRate = (v / L) * Math.tan(this.steerAngle);
+    this.heading += this.yawRate * delta;
+    this.heading = Math.atan2(Math.sin(this.heading), Math.cos(this.heading));
+
+    // The rear axle always travels along the body's heading — this is the
+    // constraint that produces off-tracking for free.
+    rx += Math.sin(this.heading) * v * delta;
+    rz += Math.cos(this.heading) * v * delta;
+
+    // Derive the body origin back from the rear axle.
+    this.position.x = rx + this.rearAxleZ * Math.sin(this.heading);
+    this.position.z = rz + this.rearAxleZ * Math.cos(this.heading);
+    this.position.x = THREE.MathUtils.clamp(this.position.x, -bounds, bounds);
+    this.position.z = THREE.MathUtils.clamp(this.position.z, -bounds, bounds);
+  }
+
+  /** Turning radius at the current lock, in metres. Infinite when straight. */
+  get turnRadius() {
+    const t = Math.tan(this.steerAngle);
+    return Math.abs(t) < 1e-4 ? Infinity : Math.abs(this.wheelbase / t);
   }
 
   /**
@@ -218,10 +290,34 @@ export class Truck {
     this.body.position.y = -Math.abs(this.pitch) * 0.12;
   }
 
+  /**
+   * Wheel visuals, including true Ackermann geometry.
+   *
+   * Both front wheels turning by the same angle is wrong: they travel circles
+   * of different radii, so the inner wheel has to turn MORE than the outer or
+   * one of them scrubs. Visible on a truck at full lock, and free to compute
+   * once the wheelbase and track are known.
+   */
   _updateWheels(delta) {
     const spin = (this.speed * delta) / this.wheelRadius;
     this.wheels.spinning.forEach((s) => { s.rotation.x -= spin; });
-    this.wheels.steerable.forEach((pivot) => { pivot.rotation.y = this.steerAngle; });
+
+    const d = this.steerAngle;
+    if (!this.frontWheels || Math.abs(d) < 1e-4) {
+      this.wheels.steerable.forEach((p) => { p.rotation.y = d; });
+      return;
+    }
+    const L = this.wheelbase;
+    const halfTrack = this.track / 2;
+    const R = L / Math.tan(Math.abs(d));       // radius to the centreline
+    const turningLeft = d > 0;                 // +X is the truck's left
+    for (const w of this.frontWheels) {
+      // A wheel on the inside of the turn sits closer to the centre of the
+      // circle, so its radius is smaller and its angle larger.
+      const inner = (w.side > 0) === turningLeft;
+      const r = inner ? R - halfTrack : R + halfTrack;
+      w.steer.rotation.y = Math.sign(d) * Math.atan(L / r);
+    }
   }
 
   _updateLights(delta, throttle, braking) {
