@@ -3,6 +3,7 @@ import { InputController } from './InputController.js';
 import { ChaseCamera } from './ChaseCamera.js';
 import { FadeTransition } from './FadeTransition.js';
 import { Truck } from '../entities/Truck.js';
+import { loadTruckModel, buildRigFromModel, applyToonShading } from '../entities/truck/model.js';
 import { TruckFX } from '../entities/TruckFX.js';
 import { Portal } from '../entities/Portal.js';
 import { HUD } from '../ui/HUD.js';
@@ -101,6 +102,18 @@ export class Game {
   /** Builds the hub world synchronously — call once before showing the intro screen. */
   async preload() {
     this._onResize();
+
+    // The truck is an authored GLB, so it has to arrive before the first
+    // frame. Everything else in the game is procedural and needs no fetch.
+    try {
+      const scene = await loadTruckModel();
+      const rig = buildRigFromModel(scene, { bodyGroup: this.truck.body, rootGroup: this.truck.group });
+      applyToonShading(scene);
+      this.truck.attachModel(scene, rig);
+    } catch (err) {
+      console.error('Truck model failed to load', err);
+    }
+
     this._loadWorldSync('hub');
     this.hud.setProgress(0, THEMED_WORLD_IDS.length);
   }

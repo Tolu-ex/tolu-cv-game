@@ -22,3 +22,6 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Large binary assets are committed deliberately; keep this note so the
+# truck model is not mistaken for build output.
