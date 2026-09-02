@@ -12,10 +12,10 @@ export const HUB_PORTAL_RADIUS = 92;
 // Six portals evenly spread in a ring around the spawn point.
 export const HUB_PORTAL_DEFS = [
   { id: 'haarlem', label: 'Haarlem', icon: '🇳🇱', color: P.haarlem, angle: 0 },
-  { id: 'ileife', label: 'Ile-Ife', icon: '🌍', color: P.ileife, angle: (Math.PI * 2) / 6 },
+  { id: 'ileife', label: 'Ile-Ife', icon: '🇳🇬', color: P.ileife, angle: (Math.PI * 2) / 6 },
   { id: 'lagos', label: 'Lagos', icon: '🏙️', color: P.lagos, angle: (Math.PI * 4) / 6 },
   { id: 'market', label: 'Street Market', icon: '👟', color: P.market, angle: Math.PI },
-  { id: 'singapore', label: 'Singapore', icon: '🌏', color: P.singapore, angle: (Math.PI * 8) / 6 },
+  { id: 'singapore', label: 'Singapore', icon: '🇸🇬', color: P.singapore, angle: (Math.PI * 8) / 6 },
   { id: 'contact', label: 'Say Hello', icon: '🌷', color: P.contact, angle: (Math.PI * 10) / 6 },
 ].map((p) => ({
   ...p,

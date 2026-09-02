@@ -120,6 +120,41 @@ export function createTree({ height = 4, radius = 1.4, trunkColor = 0x6b4a2f, le
   return g;
 }
 
+/**
+ * Broad-canopy shade tree: a clear trunk under a wide, slightly flattened
+ * crown. `createTree` is a stacked cone — a conifer — which is right for the
+ * hub and Haarlem and wrong anywhere tropical, where the dominant street and
+ * campus trees spread horizontally to throw shade.
+ */
+export function createCanopyTree({ height = 7, radius = 3, trunkColor = 0x6b5138, leafColor = 0x357a3c } = {}) {
+  const g = new THREE.Group();
+  const trunkH = height * 0.52;
+  const trunk = mesh(new THREE.CylinderGeometry(radius * 0.09, radius * 0.15, trunkH, 7), trunkColor);
+  trunk.position.y = trunkH / 2;
+  g.add(trunk);
+
+  // A couple of low limbs before the crown reads as a spreading tree, not a
+  // lollipop on a stick.
+  for (let i = 0; i < 3; i++) {
+    const a = (i / 3) * Math.PI * 2;
+    const limb = mesh(new THREE.CylinderGeometry(radius * 0.05, radius * 0.07, radius * 0.9, 5), trunkColor);
+    limb.position.set(Math.sin(a) * radius * 0.28, trunkH * 0.92, Math.cos(a) * radius * 0.28);
+    limb.rotation.z = Math.sin(a) * 0.5;
+    limb.rotation.x = Math.cos(a) * -0.5;
+    g.add(limb);
+  }
+
+  // Crown: overlapping flattened domes, wider than they are tall.
+  const blobs = [[0, 1, 1], [-0.55, 0.86, 0.72], [0.5, 0.9, 0.76], [0.05, 0.7, 0.66]];
+  for (const [dx, sy, sc] of blobs) {
+    const crown = mesh(new THREE.IcosahedronGeometry(radius * sc, 1), leafColor);
+    crown.position.set(dx * radius, trunkH + radius * 0.42 * sy, (sc - 0.8) * radius * 0.5);
+    crown.scale.set(1, 0.6, 1);
+    g.add(crown);
+  }
+  return g;
+}
+
 export function createPalmTree({ height = 6, trunkColor = 0x8a6a42, leafColor = 0x3c9a4a } = {}) {
   const g = new THREE.Group();
   const segs = 6;

@@ -141,7 +141,7 @@ export function buildSingaporeWorld() {
 
   return {
     group,
-    name: '🌏 Singapore',
+    name: '🇸🇬 Singapore',
     sky: C.sky,
     fog: C.fog,
     fogNear: 50,

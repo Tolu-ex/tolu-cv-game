@@ -28,15 +28,23 @@ export const PALETTE = {
     windmillBody: 0xd9c9a3,
     windmillCap: 0x5b4636,
   },
+  // Obafemi Awolowo University, Ile-Ife: a landscaped modernist campus, so the
+  // ground is lawn and paving rather than bare earth, and the sky is ordinary
+  // tropical blue rather than the permanent amber that gets reached for
+  // whenever the setting is African.
   ileife: {
-    sky: 0xffd79a,
-    fog: 0xffcf8f,
-    earth: 0xb4552b,
-    earthDark: 0x8f3f1e,
-    building: 0xe8ddb5,
-    buildingAccent: 0xc23b2b,
+    sky: 0xa8d6ee,
+    fog: 0xc6e2f2,
+    lawn: 0x5f9e4a,
+    lawnDark: 0x4f8a3d,
+    paving: 0xcfc9bb,
+    road: 0x54585c,
+    concrete: 0xe6e2d7,       // the campus's pale board-marked concrete
+    concreteShade: 0xc4bfae,  // recesses behind the sun screens
+    accent: 0x9c2b25,
     palmTrunk: 0x8a6a42,
     palmLeaf: 0x3c9a4a,
+    canopy: 0x357a3c,         // broad shade trees, which the campus is full of
   },
   lagos: {
     sky: 0xbcd4e6,
