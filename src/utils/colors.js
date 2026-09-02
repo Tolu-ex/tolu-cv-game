@@ -10,7 +10,6 @@ export const PALETTE = {
     groundDark: 0xa9b89c,
     sky: 0xd8e8f1,          // pale powder blue
     fog: 0xd8e8f1,          // matches sky so distance dissolves into it
-    treeTrunk: 0x8e806c,
     treeLeaf: 0x40614f,     // deep cool green, well below the ground in value
     treeLeafLight: 0x577a61,
     path: 0xece5d6,         // warm ivory against the cool field
@@ -41,9 +40,6 @@ export const PALETTE = {
     road: 0x54585c,
     concrete: 0xe6e2d7,       // the campus's pale board-marked concrete
     concreteShade: 0xc4bfae,  // recesses behind the sun screens
-    accent: 0x9c2b25,
-    palmTrunk: 0x8a6a42,
-    palmLeaf: 0x3c9a4a,
     canopy: 0x357a3c,         // broad shade trees, which the campus is full of
   },
   lagos: {
@@ -72,7 +68,6 @@ export const PALETTE = {
     boardwalk: 0x2e2f3a,
     tower: 0x8a94a6,
     towerGlow: 0xfff2b0,
-    supertree: 0x3a2e22,
     supertreeCanopy: 0x2fae6a,
     starlight: 0xffffff,
   },
@@ -83,19 +78,6 @@ export const PALETTE = {
     tulipColors: [0xe5395a, 0xffd23f, 0xb84fd8, 0xff7a3d, 0xffffff, 0xff5cad],
     windmillBody: 0xe9dfc4,
     windmillCap: 0x6b4a35,
-  },
-  truck: {
-    // White cab against a green body, as every real refuse truck runs. A
-    // silver-grey cab blended into the bodywork and read as one muddy mass.
-    cab: 0xf6f2ea,
-    cabDark: 0x9aa1a8,
-    container: 0x7f9c76,
-    containerDark: 0x6b8763,
-    chassis: 0x4a545c,
-    glass: 0x9fd7e8,
-    arm: 0xe8c07a,
-    light: 0xfff2b0,
-    tail: 0xff3b30,
   },
   portal: {
     haarlem: 0xff8a3d,

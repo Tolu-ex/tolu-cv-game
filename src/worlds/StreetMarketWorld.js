@@ -25,7 +25,7 @@ function neonSign({ text, color, width = 4.2, height = 1.3 } = {}) {
   const mat = new THREE.MeshStandardMaterial({ map: tex, transparent: true, emissive: color, emissiveMap: tex, emissiveIntensity: 1.4, roughness: 0.4 });
   const plane = new THREE.Mesh(new THREE.PlaneGeometry(width, height), mat);
   g.add(plane);
-  const backing = mesh(new THREE.BoxGeometry(width + 0.2, height + 0.2, 0.08), 0x0c0c10, { castShadow: false });
+  const backing = mesh(new THREE.BoxGeometry(width + 0.2, height + 0.2, 0.08), 0x0c0c10);
   backing.position.z = -0.06;
   g.add(backing);
   const light = new THREE.PointLight(color, 14, 12, 2);
@@ -139,7 +139,7 @@ export function buildStreetMarketWorld() {
     group.add(line);
     for (let i = 1; i < points.length - 1; i += 2) {
       const bulbColor = [C.neonPink, C.neonCyan, C.neonYellow][i % 3];
-      const bulb = mesh(new THREE.SphereGeometry(0.06, 6, 6), bulbColor, { emissive: bulbColor, emissiveIntensity: 1.6, castShadow: false });
+      const bulb = mesh(new THREE.SphereGeometry(0.06, 6, 6), bulbColor, { emissive: bulbColor, emissiveIntensity: 1.6 });
       bulb.position.copy(points[i]);
       group.add(bulb);
     }

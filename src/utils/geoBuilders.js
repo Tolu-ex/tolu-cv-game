@@ -28,7 +28,7 @@ const matCache = new Map();
  * deliberately ignored: a flat-vector look has no gloss, no metal and no
  * specular. Only colour, emissive and transparency survive.
  */
-export function stdMat(color, opts = {}) {
+function stdMat(color, opts = {}) {
   const key = `${color}|${opts.emissive ?? 0}|${opts.emissiveIntensity ?? 0}|${opts.transparent ?? false}|${opts.opacity ?? 1}|${opts.side ?? 'front'}|${opts.unlit ?? false}`;
   if (matCache.has(key)) return matCache.get(key);
   const m = opts.unlit
@@ -46,8 +46,6 @@ export function stdMat(color, opts = {}) {
 
 export function mesh(geo, color, opts = {}) {
   const m = new THREE.Mesh(geo, stdMat(color, opts));
-  m.castShadow = opts.castShadow !== false;
-  m.receiveShadow = opts.receiveShadow !== false;
   return m;
 }
 
@@ -262,7 +260,7 @@ export function createWindmill({ height = 9, bodyColor = 0xd9c9a3, capColor = 0x
       lat.position.y = (bladeSpan / 5) * s;
       blade.add(lat);
     }
-    const sail = mesh(new THREE.PlaneGeometry(0.85, bladeSpan * 0.82), 0xece0c4, { side: THREE.DoubleSide, castShadow: false });
+    const sail = mesh(new THREE.PlaneGeometry(0.85, bladeSpan * 0.82), 0xece0c4, { side: THREE.DoubleSide });
     sail.position.set(0.02, bladeSpan * 0.5, 0.02);
     blade.add(sail);
     blade.rotation.z = (Math.PI / 2) * i;
@@ -412,41 +410,25 @@ export function createSupertree({ height = 14, canopyRadius = 3.2, trunkColor = 
 }
 
 // ---------------------------------------------------------------------------
-// Tulip (instanced-friendly single flower)
-// ---------------------------------------------------------------------------
-
-export function createTulip({ color = 0xe5395a } = {}) {
-  const g = new THREE.Group();
-  const stem = mesh(new THREE.CylinderGeometry(0.02, 0.025, 0.35, 4), 0x3f8f3f, { castShadow: false });
-  stem.position.y = 0.175;
-  g.add(stem);
-  const bulb = mesh(new THREE.SphereGeometry(0.09, 6, 6), color, { castShadow: false });
-  bulb.scale.set(1, 1.3, 1);
-  bulb.position.y = 0.4;
-  g.add(bulb);
-  return g;
-}
-
-// ---------------------------------------------------------------------------
 // Bike (Haarlem street prop)
 // ---------------------------------------------------------------------------
 
 export function createBike({ color = 0x2b2d30 } = {}) {
   const g = new THREE.Group();
   const wheelGeo = new THREE.TorusGeometry(0.32, 0.03, 6, 14);
-  const w1 = mesh(wheelGeo, 0x111214, { castShadow: false });
+  const w1 = mesh(wheelGeo, 0x111214);
   w1.rotation.y = Math.PI / 2;
   w1.position.set(-0.5, 0.32, 0);
   const w2 = w1.clone(); w2.position.x = 0.5;
   g.add(w1, w2);
-  const frame = mesh(new THREE.BoxGeometry(1.05, 0.04, 0.04), color, { castShadow: false });
+  const frame = mesh(new THREE.BoxGeometry(1.05, 0.04, 0.04), color);
   frame.position.set(0, 0.5, 0);
   frame.rotation.z = 0.15;
   g.add(frame);
-  const seatPost = mesh(new THREE.CylinderGeometry(0.02, 0.02, 0.35, 5), color, { castShadow: false });
+  const seatPost = mesh(new THREE.CylinderGeometry(0.02, 0.02, 0.35, 5), color);
   seatPost.position.set(-0.35, 0.68, 0);
   g.add(seatPost);
-  const handlePost = mesh(new THREE.CylinderGeometry(0.02, 0.02, 0.4, 5), color, { castShadow: false });
+  const handlePost = mesh(new THREE.CylinderGeometry(0.02, 0.02, 0.4, 5), color);
   handlePost.position.set(0.48, 0.68, 0);
   handlePost.rotation.z = -0.2;
   g.add(handlePost);

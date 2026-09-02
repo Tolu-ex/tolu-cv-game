@@ -209,11 +209,6 @@ export class Game {
     this._tick();
   }
 
-  /** Dev/testing helper: jump straight to a world without driving there. */
-  jumpTo(id) {
-    return this._transitionTo(id, { fromPortal: id === 'hub' ? null : id, showStory: false });
-  }
-
   _clearCurrentWorld() {
     if (this.currentWorldGroup) {
       this.scene.remove(this.currentWorldGroup);

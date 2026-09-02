@@ -6,8 +6,8 @@ import { seededRandom } from '../utils/rng.js';
 const C = PALETTE.nature;
 const P = PALETTE.portal;
 
-export const WORLD_BOUNDS = 130;
-export const HUB_PORTAL_RADIUS = 92;
+const WORLD_BOUNDS = 130;
+const HUB_PORTAL_RADIUS = 92;
 
 // Six portals evenly spread in a ring around the spawn point.
 export const HUB_PORTAL_DEFS = [

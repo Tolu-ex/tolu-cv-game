@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { stdMat, mesh, makeTextTexture } from '../utils/geoBuilders.js';
+import { mesh, makeTextTexture } from '../utils/geoBuilders.js';
 
 function iconTexture(icon) {
   return makeTextTexture((ctx, w, h) => {
@@ -60,8 +60,7 @@ export class Portal {
       leg.position.set(side * this.radius * 0.62, this.radius, 0);
       g.add(leg);
       const glowStrip = mesh(new THREE.CylinderGeometry(0.42, 0.46, this.radius * 1.9, 8), ringColor, {
-        emissive: ringColor, emissiveIntensity: 1.4, roughness: 0.3, transparent: true, opacity: 0.9,
-      });
+        emissive: ringColor, emissiveIntensity: 1.4, transparent: true, opacity: 0.9 });
       glowStrip.position.copy(leg.position);
       g.add(glowStrip);
     }
@@ -72,16 +71,14 @@ export class Portal {
     arch.rotation.z = Math.PI;
     g.add(arch);
     const archGlow = mesh(new THREE.TorusGeometry(this.radius * 0.66, 0.5, 8, 20, Math.PI), ringColor, {
-      emissive: ringColor, emissiveIntensity: 1.4, roughness: 0.3, transparent: true, opacity: 0.85,
-    });
+      emissive: ringColor, emissiveIntensity: 1.4, transparent: true, opacity: 0.85 });
     archGlow.position.copy(arch.position);
     archGlow.rotation.z = Math.PI;
     g.add(archGlow);
 
     // Portal "membrane" — translucent glowing plane filling the archway
     const membrane = mesh(new THREE.CircleGeometry(this.radius * 0.66, 24, 0, Math.PI), ringColor, {
-      emissive: ringColor, emissiveIntensity: 0.9, transparent: true, opacity: 0.28, roughness: 0.2, castShadow: false, receiveShadow: false,
-    });
+      emissive: ringColor, emissiveIntensity: 0.9, transparent: true, opacity: 0.28 });
     membrane.rotation.z = Math.PI;
     membrane.position.set(0, this.radius * 1.62, 0);
     membrane.material.side = THREE.DoubleSide;
@@ -89,8 +86,7 @@ export class Portal {
     this.membrane = membrane;
 
     const rectMembrane = mesh(new THREE.PlaneGeometry(this.radius * 1.24, this.radius * 1.62), ringColor, {
-      emissive: ringColor, emissiveIntensity: 0.5, transparent: true, opacity: 0.14, castShadow: false, receiveShadow: false,
-    });
+      emissive: ringColor, emissiveIntensity: 0.5, transparent: true, opacity: 0.14 });
     rectMembrane.material.side = THREE.DoubleSide;
     rectMembrane.position.set(0, this.radius * 0.81, 0);
     g.add(rectMembrane);
