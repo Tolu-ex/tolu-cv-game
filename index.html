@@ -65,14 +65,27 @@
 
       <!-- Intro / start screen -->
       <div id="intro-screen">
-        <div class="intro-inner">
-          <div class="intro-emoji">🚛💨</div>
-          <h1>ROVA CV DRIVE</h1>
+        <div class="intro-scrim"></div>
+        <div class="intro-content">
+          <p class="intro-eyebrow"><span class="intro-rule"></span>Waste collection round</p>
+          <h1 class="intro-title">ROVA<em>CV Drive</em></h1>
           <p class="intro-sub">A driving tour through the CV of <strong>Toluwalase Awobusuyi</strong></p>
-          <p class="intro-desc">Run the refuse round. Pull alongside the bins on your kerb side and the arm empties them into the hopper — six at a time, then back to the depot to tip out. Six worlds to work, reached through the glowing portals.</p>
-          <button id="start-button">Start Engine 🔑</button>
-          <p class="intro-controls">WASD / Arrows to drive · Space to brake · Q E R F to move the camera · scroll to zoom</p>
+          <p class="intro-desc">Run the round. Pull alongside the bins on your kerb side and the arm empties them into the hopper — six at a time, then back to the depot to tip out.</p>
+          <button id="start-button">Start the round</button>
+          <ul class="intro-worlds">
+            <li>Haarlem</li>
+            <li>Ile-Ife</li>
+            <li>Lagos</li>
+            <li>Street Market</li>
+            <li>Singapore</li>
+            <li>Contact</li>
+          </ul>
         </div>
+        <p class="intro-controls">
+          <span class="k">W</span><span class="k">A</span><span class="k">S</span><span class="k">D</span> drive
+          <span class="sep">/</span> <span class="k">Space</span> brake
+          <span class="sep">/</span> <span class="k">Q</span><span class="k">E</span> camera
+        </p>
       </div>
     </div>
     <script type="module" src="/src/main.js"></script>

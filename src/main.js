@@ -35,8 +35,8 @@ async function boot() {
   setTimeout(() => {
     loadingScreen.classList.add('hidden');
     introScreen.classList.remove('hidden');
-    // Render one frame behind the intro screen so it isn't a black void.
-    game.renderer.render(game.scene, game.camera);
+    // The title screen is a window onto the world, not a wall in front of it.
+    game.startAttract();
   }, 200);
 
   startButton.addEventListener('click', () => {

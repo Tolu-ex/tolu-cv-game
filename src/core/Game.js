@@ -160,7 +160,45 @@ export class Game {
     this.hud.setProgress(0, THEMED_WORLD_IDS.length);
   }
 
+  /**
+   * Attract mode: the world stays alive behind the title screen, with the
+   * camera drifting slowly around the parked truck. The menu used to sit on an
+   * opaque gradient, so the frame main.js renders behind it was never seen.
+   */
+  startAttract() {
+    if (this._attract) return;
+    this._attract = true;
+    this._attractT = 0;
+    this.chaseCam.distance = 25;
+    this.chaseCam.height = 7.5;
+    this.chaseCam.pitchOffset = 0.13;
+
+    const loop = () => {
+      if (!this._attract) return;
+      requestAnimationFrame(loop);
+      const delta = Math.min(this.clock.getDelta(), 0.05);
+      this._attractT += delta;
+      // Parked ahead of the truck looking back at it, so the title screen sees
+      // the cab and the arm rather than the tailgate. A slow sweep across a
+      // front three-quarter, never swinging round to the back.
+      this.chaseCam.yawOffset = 2.15 + Math.sin(this._attractT * 0.09) * 0.35;
+      this.chaseCam.update(delta, this.truck);
+      for (const p of this.portals) p.update(delta, this._attractT);
+      if (this.currentWorldUpdate) this.currentWorldUpdate(delta, this._attractT);
+      this.renderer.render(this.scene, this.camera);
+    };
+    loop();
+  }
+
+  stopAttract() { this._attract = false; }
+
   start() {
+    this.stopAttract();
+    // Hand the camera back to the player behind the truck.
+    this.chaseCam.yawOffset = 0;
+    this.chaseCam.pitchOffset = 0;
+    this.chaseCam.setFraming(this.truck.cameraFraming);
+    this.chaseCam.snapTo(this.truck);
     this.running = true;
     // Browsers refuse to open an AudioContext outside a user gesture, and the
     // Start Engine click is the only one guaranteed before play begins.
