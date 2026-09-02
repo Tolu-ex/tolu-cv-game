@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js';
-import { plasticMaterial, metalMaterial, rubberMaterial } from '../utils/materials.js';
+import { posterMaterial } from '../utils/artDirection.js';
 
 // One geometry/material set shared by every bin in the world. Bins are the
 // most numerous object in the game, so they must not each allocate their own.
@@ -15,20 +15,20 @@ function buildShared() {
     bar: new THREE.CylinderGeometry(0.022, 0.022, 0.6, 8),
     matBody: {},   // filled per colour on demand
     matLid: {},
-    matMetal: metalMaterial(0x4a4f55, { roughness: 0.55 }),
-    matRubber: rubberMaterial(0x16181c),
+    matMetal: posterMaterial(0x4a4f55),
+    matRubber: posterMaterial(0x16181c),
   };
   return SHARED;
 }
 
 function bodyMat(colour) {
   const S = buildShared();
-  if (!S.matBody[colour]) S.matBody[colour] = plasticMaterial(colour, { roughness: 0.62 });
+  if (!S.matBody[colour]) S.matBody[colour] = posterMaterial(colour);
   return S.matBody[colour];
 }
 function lidMat(colour) {
   const S = buildShared();
-  if (!S.matLid[colour]) S.matLid[colour] = plasticMaterial(colour, { roughness: 0.5 });
+  if (!S.matLid[colour]) S.matLid[colour] = posterMaterial(colour);
   return S.matLid[colour];
 }
 
@@ -61,12 +61,10 @@ export class Bin {
 
     const body = new THREE.Mesh(S.body, bodyMat(colour));
     body.position.y = 0.52;
-    body.castShadow = true; body.receiveShadow = true;
     pivot.add(body);
 
     const lid = new THREE.Mesh(S.lid, lidMat(lidColour));
     lid.position.y = 1.0;
-    lid.castShadow = true;
     pivot.add(lid);
     this.lid = lid;
 
@@ -80,7 +78,6 @@ export class Bin {
       const w = new THREE.Mesh(S.wheel, S.matRubber);
       w.rotation.z = Math.PI / 2;
       w.position.set(sx, 0.09, -0.18);
-      w.castShadow = true;
       pivot.add(w);
     }
 

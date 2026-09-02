@@ -24,9 +24,8 @@ function neonSign({ text, color, width = 4.2, height = 1.3 } = {}) {
   const tex = neonTexture(text, `#${color.toString(16).padStart(6, '0')}`);
   const mat = new THREE.MeshStandardMaterial({ map: tex, transparent: true, emissive: color, emissiveMap: tex, emissiveIntensity: 1.4, roughness: 0.4 });
   const plane = new THREE.Mesh(new THREE.PlaneGeometry(width, height), mat);
-  plane.castShadow = false;
   g.add(plane);
-  const backing = mesh(new THREE.BoxGeometry(width + 0.2, height + 0.2, 0.08), 0x0c0c10, { roughness: 0.8, castShadow: false });
+  const backing = mesh(new THREE.BoxGeometry(width + 0.2, height + 0.2, 0.08), 0x0c0c10, { castShadow: false });
   backing.position.z = -0.06;
   g.add(backing);
   const light = new THREE.PointLight(color, 14, 12, 2);
@@ -37,9 +36,9 @@ function neonSign({ text, color, width = 4.2, height = 1.3 } = {}) {
 
 function sneakerBox(color) {
   const g = new THREE.Group();
-  const box = mesh(new THREE.BoxGeometry(0.42, 0.26, 0.3), 0xf2f0e8, { roughness: 0.7 });
+  const box = mesh(new THREE.BoxGeometry(0.42, 0.26, 0.3), 0xf2f0e8);
   g.add(box);
-  const lid = mesh(new THREE.BoxGeometry(0.44, 0.05, 0.32), color, { roughness: 0.5, emissive: color, emissiveIntensity: 0.15 });
+  const lid = mesh(new THREE.BoxGeometry(0.44, 0.05, 0.32), color, { emissive: color, emissiveIntensity: 0.15 });
   lid.position.y = 0.15;
   g.add(lid);
   return g;
@@ -47,14 +46,14 @@ function sneakerBox(color) {
 
 function sneakerStall({ rand }) {
   const g = new THREE.Group();
-  const stallBody = mesh(new THREE.BoxGeometry(3.4, 2, 1.6), C.stall, { roughness: 0.6, metalness: 0.2 });
+  const stallBody = mesh(new THREE.BoxGeometry(3.4, 2, 1.6), C.stall);
   stallBody.position.y = 1;
   g.add(stallBody);
-  const canopy = mesh(new THREE.BoxGeometry(3.8, 0.12, 2), 0x2e3242, { roughness: 0.7 });
+  const canopy = mesh(new THREE.BoxGeometry(3.8, 0.12, 2), 0x2e3242);
   canopy.position.y = 2.15;
   g.add(canopy);
   for (const side of [-1, 0, 1]) {
-    const leg = mesh(new THREE.CylinderGeometry(0.05, 0.05, 2.1, 5), 0x3d4256, { roughness: 0.6, metalness: 0.5 });
+    const leg = mesh(new THREE.CylinderGeometry(0.05, 0.05, 2.1, 5), 0x3d4256);
     leg.position.set(side * 1.7, 1.05, 0.95);
     g.add(leg);
   }
@@ -67,13 +66,12 @@ function sneakerStall({ rand }) {
     }
   }
   // hanging strip light under the canopy
-  const strip = mesh(new THREE.BoxGeometry(3.4, 0.06, 0.06), 0xffe22f, { emissive: 0xffe22f, emissiveIntensity: 1.6, roughness: 0.3 });
+  const strip = mesh(new THREE.BoxGeometry(3.4, 0.06, 0.06), 0xffe22f, { emissive: 0xffe22f, emissiveIntensity: 1.6 });
   strip.position.set(0, 2.02, 0.85);
   g.add(strip);
   const stripLight = new THREE.PointLight(0xffe9a0, 11, 9, 2);
   stripLight.position.set(0, 1.9, 0.85);
   g.add(stripLight);
-  g.traverse((o) => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } });
   return g;
 }
 
@@ -82,21 +80,20 @@ export function buildStreetMarketWorld() {
   const rand = seededRandom(53);
   const bounds = 58;
 
-  const ground = mesh(new THREE.PlaneGeometry(140, 170), C.asphalt, { roughness: 0.95 });
+  const ground = mesh(new THREE.PlaneGeometry(140, 170), C.asphalt);
   ground.rotation.x = -Math.PI / 2;
-  ground.receiveShadow = true;
   group.add(ground);
 
   // Puddly asphalt sheen strips
   for (let i = 0; i < 10; i++) {
-    const strip = mesh(new THREE.PlaneGeometry(2 + rand() * 4, 20 + rand() * 20), 0x33384a, { roughness: 0.2, metalness: 0.3, transparent: true, opacity: 0.4 });
+    const strip = mesh(new THREE.PlaneGeometry(2 + rand() * 4, 20 + rand() * 20), 0x33384a, { transparent: true, opacity: 0.4 });
     strip.rotation.x = -Math.PI / 2;
     strip.position.set((rand() - 0.5) * 100, 0.005, (rand() - 0.5) * 140);
     group.add(strip);
   }
 
   // Central walking lane
-  const lane = mesh(new THREE.PlaneGeometry(9, 150), 0x36384a, { roughness: 0.9 });
+  const lane = mesh(new THREE.PlaneGeometry(9, 150), 0x36384a);
   lane.rotation.x = -Math.PI / 2;
   lane.position.y = 0.01;
   group.add(lane);
@@ -142,7 +139,7 @@ export function buildStreetMarketWorld() {
     group.add(line);
     for (let i = 1; i < points.length - 1; i += 2) {
       const bulbColor = [C.neonPink, C.neonCyan, C.neonYellow][i % 3];
-      const bulb = mesh(new THREE.SphereGeometry(0.06, 6, 6), bulbColor, { emissive: bulbColor, emissiveIntensity: 1.6, roughness: 0.3, castShadow: false });
+      const bulb = mesh(new THREE.SphereGeometry(0.06, 6, 6), bulbColor, { emissive: bulbColor, emissiveIntensity: 1.6, castShadow: false });
       bulb.position.copy(points[i]);
       group.add(bulb);
     }
@@ -150,24 +147,18 @@ export function buildStreetMarketWorld() {
 
   // A few crates / props scattered
   for (let i = 0; i < 12; i++) {
-    const crate = mesh(new THREE.BoxGeometry(0.6, 0.6, 0.6), 0x3a2e20, { roughness: 0.9 });
+    const crate = mesh(new THREE.BoxGeometry(0.6, 0.6, 0.6), 0x3a2e20);
     crate.position.set((rand() - 0.5) * 10, 0.3, (rand() - 0.5) * 90);
     crate.rotation.y = rand() * Math.PI;
     group.add(crate);
   }
 
   // Night lighting — enough fill to read shapes, with the neon doing the mood
-  const hemi = new THREE.HemisphereLight(0x7a88d0, 0x2a2e44, 2.2);
+  const hemi = new THREE.HemisphereLight(0x7a88d0, 0x2a2e44, 0.40);
   group.add(hemi);
-  group.add(new THREE.AmbientLight(0x8d95c8, 1.3));
-  const moon = new THREE.DirectionalLight(0xaebaff, 1.1);
+  group.add(new THREE.AmbientLight(0x8d95c8, 0.34));
+  const moon = new THREE.DirectionalLight(0xaebaff, 0.34);
   moon.position.set(-30, 50, -20);
-  moon.castShadow = true;
-  moon.shadow.mapSize.set(1536, 1536);
-  moon.shadow.camera.left = -80; moon.shadow.camera.right = 80;
-  moon.shadow.camera.top = 80; moon.shadow.camera.bottom = -80;
-  moon.shadow.camera.far = 200;
-  moon.shadow.bias = -0.0006;
   group.add(moon, moon.target);
 
   // Bins between the stalls and the lane, where a real market's waste sits.

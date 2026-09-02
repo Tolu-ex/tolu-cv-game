@@ -30,24 +30,20 @@ export function buildHubWorld() {
 
   // Ground
   const groundGeo = new THREE.CircleGeometry(WORLD_BOUNDS + 40, 48);
-  const ground = mesh(groundGeo, C.ground, { roughness: 1 });
+  const ground = mesh(groundGeo, C.ground);
   ground.rotation.x = -Math.PI / 2;
-  ground.receiveShadow = true;
-  ground.castShadow = false;
   group.add(ground);
 
   // Subtle darker rings for a bit of ground variation
   for (let r = 20; r < WORLD_BOUNDS + 30; r += 26) {
-    const ring = mesh(new THREE.RingGeometry(r, r + 6, 40), C.groundDark, { roughness: 1, transparent: true, opacity: 0.35 });
+    const ring = mesh(new THREE.RingGeometry(r, r + 6, 40), C.groundDark, { transparent: true, opacity: 0.35 });
     ring.rotation.x = -Math.PI / 2;
     ring.position.y = 0.01;
-    ring.receiveShadow = true;
-    ring.castShadow = false;
     group.add(ring);
   }
 
   // Central plaza patch around spawn
-  const plaza = mesh(new THREE.CircleGeometry(9, 24), C.path, { roughness: 1 });
+  const plaza = mesh(new THREE.CircleGeometry(9, 24), C.path);
   plaza.rotation.x = -Math.PI / 2;
   plaza.position.y = 0.02;
   group.add(plaza);
@@ -55,11 +51,10 @@ export function buildHubWorld() {
   // Dirt paths radiating out to each portal
   for (const p of HUB_PORTAL_DEFS) {
     const dist = HUB_PORTAL_RADIUS - 6;
-    const path = mesh(new THREE.PlaneGeometry(4.6, dist), C.path, { roughness: 1 });
+    const path = mesh(new THREE.PlaneGeometry(4.6, dist), C.path);
     path.rotation.x = -Math.PI / 2;
     path.rotation.z = -p.angle;
     path.position.set(Math.sin(p.angle) * dist * 0.5, 0.015, Math.cos(p.angle) * dist * 0.5);
-    path.receiveShadow = true;
     group.add(path);
   }
 

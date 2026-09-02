@@ -4,6 +4,7 @@ import { ChaseCamera } from './ChaseCamera.js';
 import { FadeTransition } from './FadeTransition.js';
 import { Truck } from '../entities/Truck.js';
 import { loadTruckModel, buildRigFromModel, applyToonShading } from '../entities/truck/model.js';
+import { buildBike } from '../entities/bike/model.js';
 import { TruckFX } from '../entities/TruckFX.js';
 import { Portal } from '../entities/Portal.js';
 import { HUD } from '../ui/HUD.js';
@@ -12,7 +13,8 @@ import { MiniMap } from '../ui/MiniMap.js';
 import { RoundManager } from './RoundManager.js';
 import { AudioEngine } from '../audio/AudioEngine.js';
 import { CV_DATA } from '../data/cvData.js';
-import { disposeObject3D } from '../utils/geoBuilders.js';
+import { disposeObject3D, seedDecor } from '../utils/geoBuilders.js';
+import { seededRandom } from '../utils/rng.js';
 
 import { buildHubWorld, HUB_PORTAL_DEFS } from '../worlds/HubWorld.js';
 import { buildHaarlemWorld } from '../worlds/HaarlemWorld.js';
@@ -30,6 +32,20 @@ const WORLD_REGISTRY = {
   market: buildStreetMarketWorld,
   singapore: buildSingaporeWorld,
   contact: buildContactWorld,
+};
+
+// The truck's handling. Kept here beside the bike's so the two are readable
+// against each other; the bike supplies its own in bike/model.js.
+const TRUCK_PROFILE = {
+  maxSpeed: 16, maxReverse: 6, accel: 9, brakeDecel: 18, friction: 5,
+  maxSteer: 0.6, rollCoeff: 0.011, rollClamp: 0.09,
+  pitchCoeff: 0.004, pitchClamp: 0.06, hasReverseBeeper: true, audio: 'truck',
+  camera: { distance: 12, height: 5.2, lookHeight: 1.6, swing: 2.4 },
+};
+
+// Fixed per-world seed for decorative scatter.
+const WORLD_SEEDS = {
+  hub: 42, haarlem: 7, ileife: 19, lagos: 31, market: 53, singapore: 64, contact: 88,
 };
 
 const THEMED_WORLD_IDS = ['haarlem', 'ileife', 'lagos', 'market', 'singapore', 'contact'];
@@ -70,6 +86,10 @@ export class Game {
 
     this.truck = new Truck();
     this.scene.add(this.truck.group);
+    // Hydraulic sound is driven by the mechanism's phase boundaries, so a ram
+    // is heard when it actually starts moving rather than when the cycle was
+    // requested.
+    this.truck.onMechanismEvent = (event) => this._onMechanismEvent(event);
 
     // Exhaust + dust live in world space so puffs stay where they were emitted
     // instead of being dragged along with the truck.
@@ -110,12 +130,19 @@ export class Game {
     // frame. Everything else in the game is procedural and needs no fetch.
     try {
       const scene = await loadTruckModel();
-      const rig = buildRigFromModel(scene, { bodyGroup: this.truck.body, rootGroup: this.truck.group });
-      applyToonShading(scene);
-      this.truck.attachModel(scene, rig);
+      this.truck.registerVehicle('truck', ({ group, body }) => {
+        const rig = buildRigFromModel(scene, { bodyGroup: body, rootGroup: group });
+        applyToonShading(scene);
+        return { rig, profile: TRUCK_PROFILE };
+      });
     } catch (err) {
       console.error('Truck model failed to load', err);
     }
+
+    // The bicycle is procedural, so it costs nothing to build up front and sit
+    // hidden until the tulip field asks for it.
+    this.truck.registerVehicle('bike', ({ group }) => buildBike({ rootGroup: group }));
+    this.truck.setVehicle('truck');
 
     this._loadWorldSync('hub');
     this.hud.setProgress(0, THEMED_WORLD_IDS.length);
@@ -151,6 +178,9 @@ export class Game {
 
   _loadWorldSync(id, { fromPortal = null } = {}) {
     const builder = WORLD_REGISTRY[id];
+    // Decorative scatter is seeded from the world id, so leaving a world and
+    // driving back in rebuilds exactly the same foliage and lit windows.
+    seedDecor(WORLD_SEEDS[id] ?? 1);
     const desc = builder();
 
     this._clearCurrentWorld();
@@ -163,6 +193,11 @@ export class Game {
     this.scene.background = new THREE.Color(desc.sky);
     this.scene.fog = new THREE.Fog(desc.fog, desc.fogNear ?? 40, desc.fogFar ?? 200);
 
+    // Some worlds are ridden rather than driven.
+    this.truck.setVehicle(desc.vehicle || 'truck');
+    this.truck.mechanism?.reset();   // never arrive with the arm stuck mid-cycle
+    this.audio.setVehicle(this.truck.audioProfile);
+    this.chaseCam.setFraming(this.truck.cameraFraming);
     this.truck.setHeadlights(!!desc.night);
     this.truckFX.setDustColor(desc.dustColor ?? 0xcfc4a8);
 
@@ -189,7 +224,9 @@ export class Game {
       this.portals.push(portal);
     }
 
-    this.round.build(desc);
+    // Seeded from the world id so each bin keeps its waste stream — and so its
+    // colour — every time the player drives back into this world.
+    this.round.build(desc, seededRandom(WORLD_SEEDS[id] ?? 1));
     this.hud.setRound({
       score: this.round.score,
       load: this.round.load,
@@ -242,7 +279,6 @@ export class Game {
   _onRoundEvent(e) {
     if (e.type === 'pickupStarted') {
       this.truck.playArmCycle();
-      this.audio.hydraulic(true);
       return;
     }
     if (e.type === 'collected') {
@@ -257,9 +293,31 @@ export class Game {
       return;
     }
     if (e.type === 'emptied') {
+      // Raise the tailgate and run the ejector, rather than the load simply
+      // vanishing. The audio now follows the mechanism's own phases.
+      this.truck.playTipCycle();
       this.audio.depotDump();
       this.hud.setRound(e);
       this.hud.toast(`♻️ Tipped ${e.tipped} bins  ·  +${e.tipped * 50} bonus`);
+    }
+  }
+
+  _onMechanismEvent(event) {
+    switch (event) {
+      case 'hydraulic':
+      case 'tailgate':
+      case 'eject':
+        this.audio.hydraulic(true);
+        break;
+      case 'grip':
+        this.audio.binTip();
+        break;
+      case 'dump':
+      case 'pack':
+        this.audio.depotDump();
+        break;
+      default:
+        break;
     }
   }
 

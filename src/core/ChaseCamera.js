@@ -44,6 +44,19 @@ export class ChaseCamera {
     this.maxPitch = 1.42;    // almost straight down
   }
 
+  /**
+   * Reframes for a different vehicle. A bicycle is a fifth of a refuse truck's
+   * length, so the truck's follow distance leaves it a speck in the middle of
+   * the screen. Resets any zoom the player had dialled in, since that zoom was
+   * relative to the old vehicle's framing.
+   */
+  setFraming({ distance, height, lookHeight, swing } = {}) {
+    if (distance != null) { this.distance = distance; this.baseDistance = distance; }
+    if (height != null) this.height = height;
+    if (lookHeight != null) this.lookHeight = lookHeight;
+    if (swing != null) this.swing = swing;
+  }
+
   /** Instantly snap behind the target — used right after a world transition. */
   snapTo(target) {
     this._swingAmount = 0;

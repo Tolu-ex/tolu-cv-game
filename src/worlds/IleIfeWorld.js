@@ -25,33 +25,32 @@ function signTexture() {
 /** A stylized rotunda hall with the iconic wide conical OAU-style roof. */
 function conicalHall({ radius = 9, height = 7, roofHeight = 6, color = C.building } = {}) {
   const g = new THREE.Group();
-  const drum = mesh(new THREE.CylinderGeometry(radius, radius * 1.05, height, 20), color, { roughness: 0.85 });
+  const drum = mesh(new THREE.CylinderGeometry(radius, radius * 1.05, height, 20), color);
   drum.position.y = height / 2;
   g.add(drum);
   // ring of columns
   const colCount = 16;
   for (let i = 0; i < colCount; i++) {
     const a = (i / colCount) * Math.PI * 2;
-    const col = mesh(new THREE.CylinderGeometry(0.25, 0.28, height, 6), 0xf2ead0, { roughness: 0.8 });
+    const col = mesh(new THREE.CylinderGeometry(0.25, 0.28, height, 6), 0xf2ead0);
     col.position.set(Math.sin(a) * (radius + 0.5), height / 2, Math.cos(a) * (radius + 0.5));
     g.add(col);
   }
-  const roof = mesh(new THREE.ConeGeometry(radius * 1.35, roofHeight, 20), C.buildingAccent, { roughness: 0.7 });
+  const roof = mesh(new THREE.ConeGeometry(radius * 1.35, roofHeight, 20), C.buildingAccent);
   roof.position.y = height + roofHeight / 2 - 0.3;
   g.add(roof);
-  const roofTip = mesh(new THREE.SphereGeometry(0.35, 8, 8), 0xe8ddb5, { roughness: 0.4, metalness: 0.3 });
+  const roofTip = mesh(new THREE.SphereGeometry(0.35, 8, 8), 0xe8ddb5);
   roofTip.position.y = height + roofHeight - 0.3;
   g.add(roofTip);
   // entrance steps
-  const steps = mesh(new THREE.CylinderGeometry(radius + 1.4, radius + 2.2, 0.5, 20), 0xd8c9a0, { roughness: 0.9 });
+  const steps = mesh(new THREE.CylinderGeometry(radius + 1.4, radius + 2.2, 0.5, 20), 0xd8c9a0);
   steps.position.y = 0.25;
   g.add(steps);
-  g.traverse((o) => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } });
   return g;
 }
 
 function laneriteRock({ scale = 1 } = {}) {
-  const g = mesh(new THREE.DodecahedronGeometry(scale, 0), 0x9a5a35, { roughness: 1 });
+  const g = mesh(new THREE.DodecahedronGeometry(scale, 0), 0x9a5a35);
   g.position.y = scale * 0.4;
   return g;
 }
@@ -61,21 +60,20 @@ export function buildIleIfeWorld() {
   const rand = seededRandom(19);
   const bounds = 66;
 
-  const ground = mesh(new THREE.PlaneGeometry(160, 190), C.earth, { roughness: 1 });
+  const ground = mesh(new THREE.PlaneGeometry(160, 190), C.earth);
   ground.rotation.x = -Math.PI / 2;
-  ground.receiveShadow = true;
   group.add(ground);
 
   // Darker earth patches for texture
   for (let i = 0; i < 26; i++) {
-    const patch = mesh(new THREE.CircleGeometry(4 + rand() * 6, 10), C.earthDark, { roughness: 1, transparent: true, opacity: 0.5 });
+    const patch = mesh(new THREE.CircleGeometry(4 + rand() * 6, 10), C.earthDark, { transparent: true, opacity: 0.5 });
     patch.rotation.x = -Math.PI / 2;
     patch.position.set((rand() - 0.5) * 140, 0.01, (rand() - 0.5) * 170);
     group.add(patch);
   }
 
   // Dirt road down the middle
-  const road = mesh(new THREE.PlaneGeometry(9, 170), 0xc06a3a, { roughness: 1 });
+  const road = mesh(new THREE.PlaneGeometry(9, 170), 0xc06a3a);
   road.rotation.x = -Math.PI / 2;
   road.position.y = 0.015;
   group.add(road);
@@ -91,7 +89,7 @@ export function buildIleIfeWorld() {
   signPlane.position.set(0, 4.2, 0);
   signPost.add(signPlane);
   for (const side of [-1, 1]) {
-    const post = mesh(new THREE.CylinderGeometry(0.18, 0.18, 4.2, 6), 0x5a3a20, { roughness: 0.9 });
+    const post = mesh(new THREE.CylinderGeometry(0.18, 0.18, 4.2, 6), 0x5a3a20);
     post.position.set(side * 2.7, 2.1, 0);
     signPost.add(post);
   }
@@ -109,15 +107,15 @@ export function buildIleIfeWorld() {
   // Academic blocks along the opposite side of the road
   const blockSpots = [[22, -12], [28, 14], [24, -34]];
   for (const [bx, bz] of blockSpots) {
-    const block = mesh(new THREE.BoxGeometry(10, 6, 8), C.building, { roughness: 0.85 });
+    const block = mesh(new THREE.BoxGeometry(10, 6, 8), C.building);
     block.position.set(bx, 3, bz);
     group.add(block);
-    const roof = mesh(new THREE.BoxGeometry(10.6, 0.5, 8.6), C.buildingAccent, { roughness: 0.7 });
+    const roof = mesh(new THREE.BoxGeometry(10.6, 0.5, 8.6), C.buildingAccent);
     roof.position.set(bx, 6.25, bz);
     group.add(roof);
     for (let f = 0; f < 2; f++) {
       for (let w = -1; w <= 1; w++) {
-        const win = mesh(new THREE.PlaneGeometry(1.2, 1.4), 0x1c2b33, { emissive: 0xfff2c9, emissiveIntensity: 0.2, roughness: 0.3, castShadow: false, receiveShadow: false });
+        const win = mesh(new THREE.PlaneGeometry(1.2, 1.4), 0x1c2b33, { emissive: 0xfff2c9, emissiveIntensity: 0.2, castShadow: false, receiveShadow: false });
         win.position.set(bx + w * 3, 1.6 + f * 2.4, bz - 4.02);
         group.add(win);
       }
@@ -152,16 +150,11 @@ export function buildIleIfeWorld() {
   }
 
   // Warm savanna lighting
-  const hemi = new THREE.HemisphereLight(0xffe3b0, C.earthDark, 0.75);
+  group.add(new THREE.AmbientLight(0xfff2e0, 0.50));
+  const hemi = new THREE.HemisphereLight(0xffe3b0, C.earthDark, 0.42);
   group.add(hemi);
-  const sun = new THREE.DirectionalLight(0xffdca0, 1.5);
+  const sun = new THREE.DirectionalLight(0xffdca0, 0.58);
   sun.position.set(50, 55, -20);
-  sun.castShadow = true;
-  sun.shadow.mapSize.set(2048, 2048);
-  sun.shadow.camera.left = -90; sun.shadow.camera.right = 90;
-  sun.shadow.camera.top = 90; sun.shadow.camera.bottom = -90;
-  sun.shadow.camera.far = 220;
-  sun.shadow.bias = -0.0006;
   group.add(sun, sun.target);
 
   // Bins along the dirt road's shoulders.

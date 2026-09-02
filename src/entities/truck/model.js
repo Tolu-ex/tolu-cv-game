@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { MeshoptDecoder } from 'three/examples/jsm/libs/meshopt_decoder.module.js';
 import { toonRamp } from '../../utils/artDirection.js';
+import { buildMechanismChain } from './mechanism.js';
 
 const MODEL_URL = `${import.meta.env.BASE_URL}rova-truck.glb`;
 
@@ -102,10 +103,27 @@ export function buildRigFromModel(scene, { bodyGroup, rootGroup }) {
   bodyGroup.add(scene);
 
   rig.arm = byName.get('arm') || null;
-  rig.armBoom = byName.get('arm-boom') || null;
-  rig.armCarriage = byName.get('arm-carriage') || null;
-  rig.gripperJawA = byName.get('gripper-jaw-a') || null;
-  rig.gripperJawB = byName.get('gripper-jaw-b') || null;
+
+  // Where the gripper actually sits, measured in the truck's own frame BEFORE
+  // the mechanism chain reparents anything. The collection round uses this to
+  // decide where a bin has to be for the arm to reach it; it used to be two
+  // hard-coded constants that put the pickup point on the opposite flank from
+  // the arm the model actually carries.
+  const gripper = byName.get('gripper-mount') || byName.get('arm-boom');
+  if (gripper && rig.arm) {
+    rig.gripperOffset = {
+      x: gripper.position.x + rig.arm.position.x,
+      z: gripper.position.z + rig.arm.position.z,
+    };
+  } else {
+    rig.gripperOffset = null;
+  }
+
+  // Insert the joints the authored model does not have: the boom hinge, the
+  // jaw hinges and the tailgate's top-edge hinge.
+  const { joints, missing } = buildMechanismChain(byName);
+  rig.joints = joints;
+  rig.mechanismMissing = missing;
 
   return rig;
 }
@@ -176,8 +194,6 @@ export function applyToonShading(scene) {
       else if (o.material.length === 1) o.material = o.material[0];
     }
 
-    o.castShadow = false;
-    o.receiveShadow = false;
   });
   return converted.size;
 }
