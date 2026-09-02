@@ -100,10 +100,10 @@ export function buildLagosWorld() {
   }
 
   // Lighting — bright, slightly hazy tropical daylight
-  group.add(new THREE.AmbientLight(0xffffff, 0.52));
-  const hemi = new THREE.HemisphereLight(0xdcefff, 0x6a6a6a, 0.42);
+  group.add(new THREE.AmbientLight(0xffffff, 0.22));
+  const hemi = new THREE.HemisphereLight(0xdcefff, 0x6a6a6a, 0.28);
   group.add(hemi);
-  const sun = new THREE.DirectionalLight(0xfff2e0, 0.55);
+  const sun = new THREE.DirectionalLight(0xfff2e0, 0.85);
   sun.position.set(40, 70, 20);
   group.add(sun, sun.target);
 

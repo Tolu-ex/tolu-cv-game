@@ -123,9 +123,9 @@ export function buildHubWorld() {
   // Total incident light must land near 1.0. With tone mapping off, anything
   // much above that clips dark colours toward white — which is why the hopper
   // recess rendered pale instead of deep, and why the whole scene washed out.
-  group.add(new THREE.AmbientLight(0xffffff, 0.52));
-  group.add(new THREE.HemisphereLight(0xdcebf2, C.ground, 0.42));
-  const sun = new THREE.DirectionalLight(0xfff6e8, 0.55);
+  group.add(new THREE.AmbientLight(0xffffff, 0.22));
+  group.add(new THREE.HemisphereLight(0xdcebf2, C.ground, 0.28));
+  const sun = new THREE.DirectionalLight(0xfff6e8, 0.85);
   sun.position.set(60, 90, 40);
   group.add(sun, sun.target);
 

@@ -5,6 +5,7 @@ import { FadeTransition } from './FadeTransition.js';
 import { Truck } from '../entities/Truck.js';
 import { loadTruckModel, buildRigFromModel, applyToonShading } from '../entities/truck/model.js';
 import { buildBike } from '../entities/bike/model.js';
+import { addOutlines, createContactShadow } from '../utils/outline.js';
 import { TruckFX } from '../entities/TruckFX.js';
 import { Portal } from '../entities/Portal.js';
 import { HUD } from '../ui/HUD.js';
@@ -133,6 +134,12 @@ export class Game {
       this.truck.registerVehicle('truck', ({ group, body }) => {
         const rig = buildRigFromModel(scene, { bodyGroup: body, rootGroup: group });
         applyToonShading(scene);
+        // Line work last, so the shells copy the final geometry set. Outlines
+        // are what make the modelled ribs and shut lines read at all: flat
+        // shading alone gives two adjacent panels the same colour.
+        const ink = addOutlines(group, { thickness: 0.0026, color: 0x16240a });
+        console.info(`[truck] outlined ${ink.added} parts (${ink.skipped} skipped)`);
+        group.add(createContactShadow({ radiusX: 1.7, radiusZ: 4.8, opacity: 0.20 }));
         return { rig, profile: TRUCK_PROFILE };
       });
     } catch (err) {
@@ -141,7 +148,12 @@ export class Game {
 
     // The bicycle is procedural, so it costs nothing to build up front and sit
     // hidden until the tulip field asks for it.
-    this.truck.registerVehicle('bike', ({ group }) => buildBike({ rootGroup: group }));
+    this.truck.registerVehicle('bike', ({ group }) => {
+      const built = buildBike({ rootGroup: group });
+      addOutlines(built.scene, { thickness: 0.0026, color: 0x1d2416, minSize: 0.03 });
+      built.scene.add(createContactShadow({ radiusX: 0.45, radiusZ: 1.0, opacity: 0.18 }));
+      return built;
+    });
     this.truck.setVehicle('truck');
 
     this._loadWorldSync('hub');

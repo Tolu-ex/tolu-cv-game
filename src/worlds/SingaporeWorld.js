@@ -124,10 +124,10 @@ export function buildSingaporeWorld() {
   group.add(stars);
 
   // Night lighting — bright enough to read the landmarks against the bay
-  const hemi = new THREE.HemisphereLight(0x4a63b0, 0x141a30, 0.42);
+  const hemi = new THREE.HemisphereLight(0x4a63b0, 0x141a30, 0.24);
   group.add(hemi);
-  group.add(new THREE.AmbientLight(0x7080c0, 0.32));
-  const moon = new THREE.DirectionalLight(0xcfe0ff, 0.36);
+  group.add(new THREE.AmbientLight(0x7080c0, 0.16));
+  const moon = new THREE.DirectionalLight(0xcfe0ff, 0.6);
   moon.position.set(30, 70, -30);
   group.add(moon, moon.target);
 

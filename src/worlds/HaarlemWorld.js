@@ -178,10 +178,10 @@ export function buildHaarlemWorld() {
   }
 
   // Lighting — soft, slightly overcast Dutch daylight
-  group.add(new THREE.AmbientLight(0xffffff, 0.52));
-  const hemi = new THREE.HemisphereLight(0xd9e6ee, 0x8a8f78, 0.42);
+  group.add(new THREE.AmbientLight(0xffffff, 0.22));
+  const hemi = new THREE.HemisphereLight(0xd9e6ee, 0x8a8f78, 0.28);
   group.add(hemi);
-  const sun = new THREE.DirectionalLight(0xfff2df, 0.55);
+  const sun = new THREE.DirectionalLight(0xfff2df, 0.85);
   sun.position.set(-40, 60, 30);
   group.add(sun, sun.target);
 

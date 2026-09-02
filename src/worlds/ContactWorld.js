@@ -135,10 +135,10 @@ export function buildContactWorld() {
   }
 
   // Warm golden-hour lighting
-  group.add(new THREE.AmbientLight(0xffe8cc, 0.50));
-  const hemi = new THREE.HemisphereLight(0xffd9a0, C.field, 0.42);
+  group.add(new THREE.AmbientLight(0xffe8cc, 0.22));
+  const hemi = new THREE.HemisphereLight(0xffd9a0, C.field, 0.28);
   group.add(hemi);
-  const sun = new THREE.DirectionalLight(0xffb877, 0.58);
+  const sun = new THREE.DirectionalLight(0xffb877, 0.88);
   sun.position.set(-50, 35, 40);
   group.add(sun, sun.target);
 

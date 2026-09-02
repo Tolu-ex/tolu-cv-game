@@ -19,9 +19,13 @@ import * as THREE from 'three';
 let RAMP_CACHE = null;
 export function toonRamp(steps = 3) {
   if (RAMP_CACHE) return RAMP_CACHE;
-  // Values sit high and close together: poster shading is a gentle step from
-  // "lit" to "slightly less lit", never to darkness.
-  const stops = steps === 2 ? [0.72, 1.0] : [0.62, 0.82, 1.0];
+  // Poster shading needs the planes of a form to read as clearly different
+  // flat colours. The previous stops sat between 0.62 and 1.0, which — with
+  // most of the light coming from directionless ambient — put every face of
+  // the truck in the same band: its roof and its flank measured 131.5 and
+  // 130.8 out of 255, so 605 nodes of modelled detail rendered as one silhouette.
+  // These are spread wide enough that a change of plane is a visible step.
+  const stops = steps === 2 ? [0.55, 1.0] : [0.40, 0.70, 1.0];
   const data = new Uint8Array(stops.length * 4);
   stops.forEach((v, i) => {
     const c = Math.round(v * 255);

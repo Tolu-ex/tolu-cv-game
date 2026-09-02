@@ -150,10 +150,10 @@ export function buildIleIfeWorld() {
   }
 
   // Warm savanna lighting
-  group.add(new THREE.AmbientLight(0xfff2e0, 0.50));
-  const hemi = new THREE.HemisphereLight(0xffe3b0, C.earthDark, 0.42);
+  group.add(new THREE.AmbientLight(0xfff2e0, 0.22));
+  const hemi = new THREE.HemisphereLight(0xffe3b0, C.earthDark, 0.28);
   group.add(hemi);
-  const sun = new THREE.DirectionalLight(0xffdca0, 0.58);
+  const sun = new THREE.DirectionalLight(0xffdca0, 0.88);
   sun.position.set(50, 55, -20);
   group.add(sun, sun.target);
 

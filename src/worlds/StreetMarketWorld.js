@@ -154,10 +154,10 @@ export function buildStreetMarketWorld() {
   }
 
   // Night lighting — enough fill to read shapes, with the neon doing the mood
-  const hemi = new THREE.HemisphereLight(0x7a88d0, 0x2a2e44, 0.40);
+  const hemi = new THREE.HemisphereLight(0x7a88d0, 0x2a2e44, 0.24);
   group.add(hemi);
-  group.add(new THREE.AmbientLight(0x8d95c8, 0.34));
-  const moon = new THREE.DirectionalLight(0xaebaff, 0.34);
+  group.add(new THREE.AmbientLight(0x8d95c8, 0.16));
+  const moon = new THREE.DirectionalLight(0xaebaff, 0.6);
   moon.position.set(-30, 50, -20);
   group.add(moon, moon.target);
 
