@@ -303,24 +303,42 @@ export class Game {
 
     this.audio.whoosh();
     this.audio.duck(true);
-    await this.fade.fadeOut(550);
 
-    if (showStory) {
-      const data = CV_DATA[id];
-      if (data) await this.storyCard.show(data);
+    // Everything between the two fades runs guarded. A world builder that
+    // throws used to strand the player: the fade never lifted, input stayed
+    // locked and `transitioning` stayed true, so the game was a black screen
+    // with no way out and nothing on screen to say why.
+    try {
+      await this.fade.fadeOut(550);
+
+      if (showStory) {
+        const data = CV_DATA[id];
+        if (data) await this.storyCard.show(data);
+      }
+
+      this._loadWorldSync(id, { fromPortal });
+
+      if (THEMED_WORLD_IDS.includes(id)) {
+        this.visited.add(id);
+        this.hud.setProgress(this.visited.size, THEMED_WORLD_IDS.length);
+      }
+    } catch (err) {
+      console.error(`World "${id}" failed to load`, err);
+      // The old world has already been cleared by this point, so falling back
+      // to the hub is the difference between "you are somewhere" and a void.
+      try {
+        if (id !== 'hub') this._loadWorldSync('hub');
+        this.hud.toast('⚠️ That world failed to load — back at the depot');
+      } catch (fallbackErr) {
+        console.error('Hub fallback also failed', fallbackErr);
+      }
+    } finally {
+      // Control comes back whatever happened above.
+      await this.fade.fadeIn(550);
+      this.audio.duck(false);
+      this.input.unlock();
+      this.transitioning = false;
     }
-
-    this._loadWorldSync(id, { fromPortal });
-
-    if (THEMED_WORLD_IDS.includes(id)) {
-      this.visited.add(id);
-      this.hud.setProgress(this.visited.size, THEMED_WORLD_IDS.length);
-    }
-
-    await this.fade.fadeIn(550);
-    this.audio.duck(false);
-    this.input.unlock();
-    this.transitioning = false;
   }
 
   _onRoundEvent(e) {

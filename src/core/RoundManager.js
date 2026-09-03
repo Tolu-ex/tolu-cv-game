@@ -136,7 +136,14 @@ export class RoundManager {
     const armZ = truck.position.z - armLocalX * sin + armLocalZ * cos;
     const armPoint = { x: armX, z: armZ };
 
-    let anyCollecting = false;
+    // Whether anything is mid-lift has to be known BEFORE deciding, not
+    // discovered while walking the array. Accumulating it inside the loop meant
+    // a bin early in the array was tested before the loop reached a bin later in
+    // it that was already lifting, so two bins could collect at once — and since
+    // the arm can only serve one, the second emptied itself with no arm motion
+    // and still scored. The 0.9 s cooldown did not cover it: a lift cycle runs
+    // about 5.5 s.
+    let anyCollecting = this.bins.some((b) => b.state === 'lifting' || b.state === 'tipping');
 
     for (const bin of this.bins) {
       bin.idleBob(this._elapsed);
@@ -158,7 +165,10 @@ export class RoundManager {
 
       // Only start a new pickup when there is room and nothing else is mid-lift,
       // so the arm animation never overlaps itself.
-      if (bin.state === 'idle' && !this.isFull && !anyCollecting && this._cooldown <= 0) {
+      // The mechanism is the real constraint, so ask it directly as well: a
+      // bin must never start a cycle the arm cannot actually perform.
+      if (bin.state === 'idle' && !this.isFull && !anyCollecting
+          && !truck.armBusy && this._cooldown <= 0) {
         const d = bin.distanceTo(armPoint);
         const movingSlowEnough = Math.abs(truck.speed) < 11;
         if (d < PICKUP_RANGE && movingSlowEnough) {

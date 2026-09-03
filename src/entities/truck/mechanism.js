@@ -69,7 +69,14 @@ function rotator(name, node, axis, restRad, endRad) {
  */
 function slider(name, node, direction, restM, endM) {
   if (!node) return new Actuator(name, null, () => {});
-  const home = node.position.clone();
+  // Home is cached ON THE NODE, not in this closure. A new mechanism is built
+  // every time the truck is re-bound (switching back from the bike, say), and
+  // capturing position at construction meant a rebuild that happened mid-cycle
+  // took the DISPLACED position as home. Each round trip then added the whole
+  // stroke again: the arm ram walked 0.23 m per switch, 1.4 m after six, until
+  // the rod had left its barrel entirely.
+  if (!node.userData.mechHome) node.userData.mechHome = node.position.clone();
+  const home = node.userData.mechHome;
   const dir = direction.clone().normalize();
   return new Actuator(name, node, (v) => {
     const d = restM + (endM - restM) * v;
@@ -334,8 +341,8 @@ export class TruckMechanism {
       tailgate: rotator('tailgate', joints.tailgate, 'x', 0, 0.92),
       tailgateRam: new Actuator('tailgateRam', tgRodL || tgRodR, (v) => {
         const d = tgRamAxis.clone().normalize().multiplyScalar(-v * 0.30);
-        if (tgRodL) { if (!tgRodL.userData.home) tgRodL.userData.home = tgRodL.position.clone(); tgRodL.position.copy(tgRodL.userData.home).add(d); }
-        if (tgRodR) { if (!tgRodR.userData.home) tgRodR.userData.home = tgRodR.position.clone(); tgRodR.position.copy(tgRodR.userData.home).add(d); }
+        if (tgRodL) { if (!tgRodL.userData.mechHome) tgRodL.userData.mechHome = tgRodL.position.clone(); tgRodL.position.copy(tgRodL.userData.mechHome).add(d); }
+        if (tgRodR) { if (!tgRodR.userData.mechHome) tgRodR.userData.mechHome = tgRodR.position.clone(); tgRodR.position.copy(tgRodR.userData.mechHome).add(d); }
       }),
       packer: slider('packer', get(parts, 'packer-blade'), new THREE.Vector3(0, 0, 1), 0, 2.4),
       ejector: slider('ejector', get(parts, 'ejector-panel'), new THREE.Vector3(0, 0, -1), 0, 4.2),
