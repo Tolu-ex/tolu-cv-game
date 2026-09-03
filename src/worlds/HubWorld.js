@@ -1,6 +1,8 @@
 import * as THREE from 'three';
 import { mesh, createTree, createBush, createCloud, createLampPost } from '../utils/geoBuilders.js';
 import { PALETTE } from '../utils/colors.js';
+import { Dragon } from '../entities/Dragon.js';
+import { addOutlines } from '../utils/outline.js';
 import { seededRandom } from '../utils/rng.js';
 
 const C = PALETTE.nature;
@@ -129,6 +131,13 @@ export function buildHubWorld() {
   sun.position.set(60, 90, 40);
   group.add(sun, sun.target);
 
+  // The dragon patrols above the hub. It is scenery — no collision, no effect
+  // on the round — and it is inked like the vehicles so it reads as drawn
+  // rather than as a lump of shaded geometry against the sky.
+  const dragon = new Dragon({ radiusX: 70, radiusZ: 56, height: 30, period: 70, size: 1.8 });
+  addOutlines(dragon.group, { thickness: 0.0022, color: 0x14312a, minSize: 0.12 });
+  group.add(dragon.group);
+
   return {
     group,
     name: '🌿 Nature World',
@@ -148,6 +157,7 @@ export function buildHubWorld() {
     })),
     update(delta, elapsed) {
       clouds.forEach((c, i) => { c.position.x += Math.sin(i) * 0.4 * delta; });
+      dragon.update(delta, elapsed);
     },
     night: false,
   };
