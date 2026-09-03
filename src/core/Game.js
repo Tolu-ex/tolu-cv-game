@@ -203,6 +203,8 @@ export class Game {
     // Browsers refuse to open an AudioContext outside a user gesture, and the
     // Start Engine click is the only one guaranteed before play begins.
     this.audio.start();
+    // The round has its own soundscape; the menu theme fades out under it.
+    this.audio.stopMusic(1.6);
     this.input.unlock();
     this.hud.show();
     this.clock.start();

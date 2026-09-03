@@ -37,6 +37,7 @@ async function boot() {
     introScreen.classList.remove('hidden');
     // The title screen is a window onto the world, not a wall in front of it.
     game.startAttract();
+    game.audio.startMusic();
   }, 200);
 
   startButton.addEventListener('click', () => {
