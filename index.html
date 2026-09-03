@@ -31,6 +31,18 @@
           <div id="portal-progress"></div>
         </div>
         <div id="hud-top-right">
+          <button id="sound-toggle-hud" class="sound-toggle sound-toggle--hud" type="button" aria-pressed="true">
+            <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+              <path class="spk-body" d="M4 9.5h3.2L12 5.4v13.2L7.2 14.5H4z"/>
+              <g class="spk-on">
+                <path d="M15.4 9.1a4 4 0 0 1 0 5.8"/>
+                <path d="M17.8 6.6a7.5 7.5 0 0 1 0 10.8"/>
+              </g>
+              <g class="spk-off">
+                <path d="M16 9.6l5 4.8M21 9.6l-5 4.8"/>
+              </g>
+            </svg>
+          </button>
           <div id="speedometer">
             <div id="speed-value">0</div>
             <div id="speed-unit">km/h</div>
@@ -81,6 +93,19 @@
             <li>Contact</li>
           </ul>
         </div>
+        <button id="sound-toggle" class="sound-toggle" type="button" aria-pressed="true">
+          <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+            <path class="spk-body" d="M4 9.5h3.2L12 5.4v13.2L7.2 14.5H4z"/>
+            <g class="spk-on">
+              <path d="M15.4 9.1a4 4 0 0 1 0 5.8"/>
+              <path d="M17.8 6.6a7.5 7.5 0 0 1 0 10.8"/>
+            </g>
+            <g class="spk-off">
+              <path d="M16 9.6l5 4.8M21 9.6l-5 4.8"/>
+            </g>
+          </svg>
+          <span class="sound-label">Sound on</span>
+        </button>
         <p class="intro-controls">
           <span class="k">W</span><span class="k">A</span><span class="k">S</span><span class="k">D</span> drive
           <span class="sep">/</span> <span class="k">Space</span> brake

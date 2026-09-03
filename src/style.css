@@ -139,6 +139,47 @@ html, body {
   color: rgba(243,248,238,0.62);
 }
 
+/* Sound toggle.
+   The title screen starts music before the visitor has asked for any, and the
+   only other control is an M key that is neither visible nor bound until the
+   round begins. Someone opening this at work needs a way to silence it that
+   they can see. The choice persists in localStorage, so it is remembered. */
+.sound-toggle {
+  position: absolute; top: clamp(20px, 4vw, 40px); right: clamp(20px, 4vw, 40px);
+  z-index: 2;
+  display: inline-flex; align-items: center; gap: 9px;
+  padding: 9px 15px 9px 12px;
+  border: 1px solid rgba(243,248,238,0.22); border-radius: 100px;
+  background: rgba(6,16,9,0.55);
+  -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px);
+  color: rgba(243,248,238,0.82);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase;
+  cursor: pointer;
+  transition: border-color 0.15s ease, color 0.15s ease, background 0.15s ease;
+}
+.sound-toggle:hover { border-color: rgba(243,248,238,0.5); color: #f3f8ee; }
+.sound-toggle:focus-visible { outline: 2px solid #8fd400; outline-offset: 3px; }
+.sound-toggle svg { width: 17px; height: 17px; display: block; }
+.sound-toggle .spk-body { fill: currentColor; }
+.sound-toggle .spk-on,
+.sound-toggle .spk-off { fill: none; stroke: currentColor; stroke-width: 1.9; stroke-linecap: round; }
+
+/* One icon, two states: the waves and the cross swap. */
+.sound-toggle .spk-off { display: none; }
+.sound-toggle.is-muted .spk-on { display: none; }
+.sound-toggle.is-muted .spk-off { display: block; }
+.sound-toggle.is-muted { color: rgba(243,248,238,0.45); }
+
+/* In the HUD it is icon-only, and needs pointer events back — #hud sets
+   pointer-events: none so the canvas stays draggable underneath it. */
+.sound-toggle--hud {
+  position: static;
+  padding: 8px; gap: 0;
+  pointer-events: auto;
+}
+.sound-toggle--hud .sound-label { display: none; }
+
 .intro-controls {
   position: relative;
   margin: 0; display: flex; align-items: center; flex-wrap: wrap; gap: 6px;
@@ -175,7 +216,10 @@ html, body {
 #world-name { font-weight: 700; font-size: 15px; letter-spacing: 0.5px; color: #d7ffb0; }
 #portal-progress { font-size: 11px; opacity: 0.65; margin-top: 4px; letter-spacing: 0.5px; }
 
-#hud-top-right { position: absolute; top: 18px; right: 18px; }
+#hud-top-right {
+  position: absolute; top: 18px; right: 18px;
+  display: flex; align-items: center; gap: 10px;
+}
 #speedometer {
   background: rgba(8,20,12,0.55); backdrop-filter: blur(6px);
   border: 1px solid rgba(255,255,255,0.1); border-radius: 12px;
