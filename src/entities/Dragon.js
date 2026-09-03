@@ -20,17 +20,28 @@ import { posterMaterial } from '../utils/artDirection.js';
 /** Length of the leading body link, before taper. Sets the segment spacing. */
 const SEGMENT_LENGTH = 1.5;
 
+// Scarlet, after the red dragons of the Targaryen mould: a deep crimson body,
+// bone-pale horns, and wing membranes that lighten towards the trailing edge
+// as though the sky were coming through them. Translucency is not available in
+// a flat-shaded scene, so the backlit look is carried by two membrane tones
+// instead — dark near the arm, coral at the edge.
 const C = {
-  scale:     0x2f7d6b,   // deep jade, distinct from the ROVA lime below it
-  scaleDark: 0x235c4f,
-  belly:     0xd9c98f,
-  membrane:  0xc9713f,   // warm wing membrane, lit from behind by the sky
-  horn:      0xe8ddc0,
-  eye:       0xf2b134,
+  scale:      0x9e2b23,   // crimson
+  scaleDark:  0x6d1a17,   // shaded flank and the spiked ridge
+  belly:      0xc9714a,   // warmer underside
+  membrane:   0xc4503c,   // inner membrane, nearer the body
+  membraneLit: 0xe08a63,  // outer membrane, where light would pass through
+  horn:       0xe4d8bd,   // bone
+  eye:        0xf2b134,
 };
 
-/** One body segment: a tapered block with a paler belly plate. */
-function segment(width, height, length, colour) {
+/**
+ * One body segment: a tapered block, a paler belly plate, and a swept-back
+ * spike on the spine. The ridge of spikes running head to tail is half of what
+ * makes the silhouette read as a dragon rather than a snake — a flat box fin
+ * did not.
+ */
+function segment(width, height, length, colour, spikeScale = 1) {
   const g = new THREE.Group();
   const body = new THREE.Mesh(
     new THREE.BoxGeometry(width, height, length),
@@ -43,39 +54,78 @@ function segment(width, height, length, colour) {
   );
   belly.position.y = -height * 0.42;
   g.add(belly);
-  // A dorsal fin along the spine gives the silhouette a readable top edge.
-  const fin = new THREE.Mesh(
-    new THREE.BoxGeometry(width * 0.1, height * 0.5, length * 0.7),
-    posterMaterial(C.scaleDark),
+
+  const spike = new THREE.Mesh(
+    new THREE.ConeGeometry(width * 0.16, height * 1.5 * spikeScale, 4),
+    posterMaterial(C.horn),
   );
-  fin.position.y = height * 0.62;
-  g.add(fin);
+  spike.position.y = height * 0.5;
+  spike.rotation.x = 0.55;                 // raked back along the body
+  g.add(spike);
   return g;
 }
 
+/**
+ * The head: a narrow skull under a crown of swept-back horns.
+ *
+ * The crown is the whole point. A dragon of this type is recognised by the fan
+ * of long bone horns radiating back from the skull and continuing down the
+ * neck, plus the spines along the jaw — not by the shape of the snout. The
+ * first version had two small cones and read as a lizard.
+ */
 function buildHead() {
   const g = new THREE.Group();
-  const skull = new THREE.Mesh(new THREE.BoxGeometry(1.5, 1.25, 2.1), posterMaterial(C.scale));
+
+  const skull = new THREE.Mesh(new THREE.BoxGeometry(1.15, 1.05, 2.0), posterMaterial(C.scale));
   g.add(skull);
-  const snout = new THREE.Mesh(new THREE.BoxGeometry(0.95, 0.72, 1.3), posterMaterial(C.scale));
-  snout.position.set(0, -0.16, 1.5);
+  const snout = new THREE.Mesh(new THREE.BoxGeometry(0.72, 0.6, 1.5), posterMaterial(C.scale));
+  snout.position.set(0, -0.2, 1.6);
   g.add(snout);
-  const jaw = new THREE.Mesh(new THREE.BoxGeometry(0.85, 0.28, 1.2), posterMaterial(C.belly));
-  jaw.position.set(0, -0.52, 1.45);
+  const jaw = new THREE.Mesh(new THREE.BoxGeometry(0.64, 0.24, 1.4), posterMaterial(C.belly));
+  jaw.position.set(0, -0.5, 1.55);
   g.add(jaw);
 
+  // Crown: a fan of horns sweeping back off the skull, longest in the middle.
+  // These have to be long enough to dominate the head — at head-scale the first
+  // pass read as a few stubs rather than a crown, which is the one feature this
+  // silhouette actually hangs on.
+  for (let i = 0; i < 6; i++) {
+    for (const side of [-1, 1]) {
+      const t = i / 5;                       // 0 at the centre, 1 at the outside
+      const len = 3.1 - t * 1.25;
+      const horn = new THREE.Mesh(
+        new THREE.ConeGeometry(0.15 - t * 0.045, len, 4),
+        posterMaterial(C.horn),
+      );
+      // Anchored at the base so the cone grows backwards out of the skull
+      // rather than straddling its own midpoint.
+      horn.geometry.translate(0, len / 2, 0);
+      horn.position.set(side * (0.10 + t * 0.40), 0.42 - t * 0.34, -0.62);
+      horn.rotation.set(-1.32 - t * 0.20, 0, side * (0.12 + t * 0.50));
+      g.add(horn);
+    }
+  }
+
+  // Jaw spines: a second, lower rank sweeping back past the cheek.
+  for (const [z, len, drop] of [[0.20, 2.0, -0.30], [0.85, 1.5, -0.42]]) {
+    for (const side of [-1, 1]) {
+      const spine = new THREE.Mesh(
+        new THREE.ConeGeometry(0.10, len, 4),
+        posterMaterial(C.horn),
+      );
+      spine.geometry.translate(0, len / 2, 0);
+      spine.position.set(side * 0.46, drop, z);
+      spine.rotation.set(-1.48, 0, side * 1.12);
+      g.add(spine);
+    }
+  }
+
   for (const side of [-1, 1]) {
-    const horn = new THREE.Mesh(new THREE.ConeGeometry(0.19, 1.15, 5), posterMaterial(C.horn));
-    horn.position.set(side * 0.48, 0.78, -0.42);
-    horn.rotation.set(-0.5, 0, side * 0.24);
-    g.add(horn);
-
-    const brow = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.16, 0.7), posterMaterial(C.scaleDark));
-    brow.position.set(side * 0.5, 0.5, 0.5);
+    const brow = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.16, 0.75), posterMaterial(C.scaleDark));
+    brow.position.set(side * 0.42, 0.42, 0.5);
     g.add(brow);
-
-    const eye = new THREE.Mesh(new THREE.SphereGeometry(0.16, 7, 6), posterMaterial(C.eye));
-    eye.position.set(side * 0.56, 0.24, 0.72);
+    const eye = new THREE.Mesh(new THREE.SphereGeometry(0.14, 7, 6), posterMaterial(C.eye));
+    eye.position.set(side * 0.48, 0.16, 0.74);
     g.add(eye);
   }
   return g;
@@ -105,7 +155,7 @@ function buildWing(side) {
   forearm.position.x = side * 2.6;
   pivot.add(forearm);
 
-  const SPAN = 4.6;
+  const SPAN = 6.2;              // wings dominate the silhouette on this build
   const bone = new THREE.Mesh(new THREE.BoxGeometry(SPAN, 0.18, 0.28), posterMaterial(C.scaleDark));
   bone.position.x = side * SPAN / 2;
   forearm.add(bone);
@@ -125,10 +175,34 @@ function buildWing(side) {
   shape.closePath();
   const membrane = new THREE.Mesh(
     new THREE.ShapeGeometry(shape),
-    posterMaterial(C.membrane, { side: THREE.DoubleSide }),
+    posterMaterial(C.membraneLit, { side: THREE.DoubleSide }),
   );
   membrane.rotation.x = Math.PI / 2;
   forearm.add(membrane);
+
+  // A second, darker panel hugging the arm. Flat shading cannot do the
+  // translucency of a real wing, so the light-through-the-membrane look is
+  // carried by two tones: dark at the root, coral out at the trailing edge.
+  const innerShape = new THREE.Shape();
+  innerShape.moveTo(0, 0.1);
+  innerShape.lineTo(side * SPAN * 0.46, -0.1);
+  innerShape.lineTo(side * SPAN * 0.30, -1.7);
+  innerShape.lineTo(side * SPAN * 0.10, -1.5);
+  innerShape.lineTo(0, -1.9);
+  innerShape.closePath();
+  const inner = new THREE.Mesh(
+    new THREE.ShapeGeometry(innerShape),
+    posterMaterial(C.membrane, { side: THREE.DoubleSide }),
+  );
+  inner.rotation.x = Math.PI / 2;
+  inner.position.y = 0.02;        // sit just above, so it wins the depth test
+  forearm.add(inner);
+
+  // Wrist claw, hooked forward off the leading edge.
+  const claw = new THREE.Mesh(new THREE.ConeGeometry(0.1, 0.85, 4), posterMaterial(C.horn));
+  claw.position.set(0, 0, 0.42);
+  claw.rotation.x = -1.25;
+  forearm.add(claw);
 
   // Finger spars along the ridges the scallops hang from.
   for (const [t, len] of [[0.80, 2.5], [0.48, 3.1], [0.20, 3.0]]) {
@@ -191,7 +265,8 @@ export class Dragon {
       // Taper from a thick shoulder to a thin tail tip.
       const w = 1.5 * size * (1 - t * 0.82);
       const h = 1.25 * size * (1 - t * 0.78);
-      const seg = segment(w, h, SEGMENT_LENGTH * size * (1 - t * 0.35), t > 0.7 ? C.scaleDark : C.scale);
+      const seg = segment(w, h, SEGMENT_LENGTH * size * (1 - t * 0.35),
+                          t > 0.7 ? C.scaleDark : C.scale, 1.25 - t * 0.6);
       this.group.add(seg);
       this.segments.push(seg);
     }
