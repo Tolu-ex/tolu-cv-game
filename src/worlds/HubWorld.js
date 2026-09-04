@@ -1,21 +1,23 @@
 import * as THREE from 'three';
 import { mesh, createTree, createBush, createCloud, createLampPost } from '../utils/geoBuilders.js';
 import { PALETTE } from '../utils/colors.js';
+import { Dragon } from '../entities/Dragon.js';
+import { addOutlines } from '../utils/outline.js';
 import { seededRandom } from '../utils/rng.js';
 
 const C = PALETTE.nature;
 const P = PALETTE.portal;
 
-export const WORLD_BOUNDS = 130;
-export const HUB_PORTAL_RADIUS = 92;
+const WORLD_BOUNDS = 130;
+const HUB_PORTAL_RADIUS = 92;
 
 // Six portals evenly spread in a ring around the spawn point.
 export const HUB_PORTAL_DEFS = [
   { id: 'haarlem', label: 'Haarlem', icon: '🇳🇱', color: P.haarlem, angle: 0 },
-  { id: 'ileife', label: 'Ile-Ife', icon: '🌍', color: P.ileife, angle: (Math.PI * 2) / 6 },
+  { id: 'ileife', label: 'Ile-Ife', icon: '🇳🇬', color: P.ileife, angle: (Math.PI * 2) / 6 },
   { id: 'lagos', label: 'Lagos', icon: '🏙️', color: P.lagos, angle: (Math.PI * 4) / 6 },
   { id: 'market', label: 'Street Market', icon: '👟', color: P.market, angle: Math.PI },
-  { id: 'singapore', label: 'Singapore', icon: '🌏', color: P.singapore, angle: (Math.PI * 8) / 6 },
+  { id: 'singapore', label: 'Singapore', icon: '🇸🇬', color: P.singapore, angle: (Math.PI * 8) / 6 },
   { id: 'contact', label: 'Say Hello', icon: '🌷', color: P.contact, angle: (Math.PI * 10) / 6 },
 ].map((p) => ({
   ...p,
@@ -123,11 +125,18 @@ export function buildHubWorld() {
   // Total incident light must land near 1.0. With tone mapping off, anything
   // much above that clips dark colours toward white — which is why the hopper
   // recess rendered pale instead of deep, and why the whole scene washed out.
-  group.add(new THREE.AmbientLight(0xffffff, 0.52));
-  group.add(new THREE.HemisphereLight(0xdcebf2, C.ground, 0.42));
-  const sun = new THREE.DirectionalLight(0xfff6e8, 0.55);
+  group.add(new THREE.AmbientLight(0xffffff, 0.22));
+  group.add(new THREE.HemisphereLight(0xdcebf2, C.ground, 0.28));
+  const sun = new THREE.DirectionalLight(0xfff6e8, 0.85);
   sun.position.set(60, 90, 40);
   group.add(sun, sun.target);
+
+  // The dragon patrols above the hub. It is scenery — no collision, no effect
+  // on the round — and it is inked like the vehicles so it reads as drawn
+  // rather than as a lump of shaded geometry against the sky.
+  const dragon = new Dragon({ radiusX: 70, radiusZ: 56, height: 30, period: 70, size: 1.8 });
+  addOutlines(dragon.group, { thickness: 0.0022, color: 0x14312a, minSize: 0.12 });
+  group.add(dragon.group);
 
   return {
     group,
@@ -148,6 +157,7 @@ export function buildHubWorld() {
     })),
     update(delta, elapsed) {
       clouds.forEach((c, i) => { c.position.x += Math.sin(i) * 0.4 * delta; });
+      dragon.update(delta, elapsed);
     },
     night: false,
   };

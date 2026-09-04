@@ -25,7 +25,7 @@ function neonSign({ text, color, width = 4.2, height = 1.3 } = {}) {
   const mat = new THREE.MeshStandardMaterial({ map: tex, transparent: true, emissive: color, emissiveMap: tex, emissiveIntensity: 1.4, roughness: 0.4 });
   const plane = new THREE.Mesh(new THREE.PlaneGeometry(width, height), mat);
   g.add(plane);
-  const backing = mesh(new THREE.BoxGeometry(width + 0.2, height + 0.2, 0.08), 0x0c0c10, { castShadow: false });
+  const backing = mesh(new THREE.BoxGeometry(width + 0.2, height + 0.2, 0.08), 0x0c0c10);
   backing.position.z = -0.06;
   g.add(backing);
   const light = new THREE.PointLight(color, 14, 12, 2);
@@ -139,7 +139,7 @@ export function buildStreetMarketWorld() {
     group.add(line);
     for (let i = 1; i < points.length - 1; i += 2) {
       const bulbColor = [C.neonPink, C.neonCyan, C.neonYellow][i % 3];
-      const bulb = mesh(new THREE.SphereGeometry(0.06, 6, 6), bulbColor, { emissive: bulbColor, emissiveIntensity: 1.6, castShadow: false });
+      const bulb = mesh(new THREE.SphereGeometry(0.06, 6, 6), bulbColor, { emissive: bulbColor, emissiveIntensity: 1.6 });
       bulb.position.copy(points[i]);
       group.add(bulb);
     }
@@ -154,10 +154,10 @@ export function buildStreetMarketWorld() {
   }
 
   // Night lighting — enough fill to read shapes, with the neon doing the mood
-  const hemi = new THREE.HemisphereLight(0x7a88d0, 0x2a2e44, 0.40);
+  const hemi = new THREE.HemisphereLight(0x7a88d0, 0x2a2e44, 0.24);
   group.add(hemi);
-  group.add(new THREE.AmbientLight(0x8d95c8, 0.34));
-  const moon = new THREE.DirectionalLight(0xaebaff, 0.34);
+  group.add(new THREE.AmbientLight(0x8d95c8, 0.16));
+  const moon = new THREE.DirectionalLight(0xaebaff, 0.6);
   moon.position.set(-30, 50, -20);
   group.add(moon, moon.target);
 

@@ -19,9 +19,13 @@ import * as THREE from 'three';
 let RAMP_CACHE = null;
 export function toonRamp(steps = 3) {
   if (RAMP_CACHE) return RAMP_CACHE;
-  // Values sit high and close together: poster shading is a gentle step from
-  // "lit" to "slightly less lit", never to darkness.
-  const stops = steps === 2 ? [0.72, 1.0] : [0.62, 0.82, 1.0];
+  // Poster shading needs the planes of a form to read as clearly different
+  // flat colours. The previous stops sat between 0.62 and 1.0, which — with
+  // most of the light coming from directionless ambient — put every face of
+  // the truck in the same band: its roof and its flank measured 131.5 and
+  // 130.8 out of 255, so 605 nodes of modelled detail rendered as one silhouette.
+  // These are spread wide enough that a change of plane is a visible step.
+  const stops = steps === 2 ? [0.55, 1.0] : [0.40, 0.70, 1.0];
   const data = new Uint8Array(stops.length * 4);
   stops.forEach((v, i) => {
     const c = Math.round(v * 255);
@@ -59,44 +63,3 @@ export function flatMaterial(color, opts = {}) {
   });
 }
 
-/**
- * Poster palette. Cool blues carry the atmosphere; warm neutrals carry the
- * built environment; dusty rose appears only as a small accent, never as a
- * field colour.
- */
-export const POSTER = {
-  // Atmosphere
-  skyHigh:   0xbfd9e8,
-  skyLow:    0xdcebf2,
-  haze:      0xd6e6ee,
-  water:     0x8fc0d6,
-  waterDeep: 0x6fa8c4,
-
-  // Distance bands — atmospheric perspective as discrete steps, which is how
-  // a flat illustration conveys depth without a gradient.
-  far1: 0xa8c6d8,
-  far2: 0x93b7cd,
-  far3: 0x7ea6c0,
-
-  // Built environment
-  ivory:   0xf4efe4,
-  cream:   0xeae2d2,
-  beige:   0xd9cdb8,
-  stone:   0xc9c0b0,
-  slate:   0x5d6b76,
-  charcoal:0x3d4750,
-  terracotta: 0xd9a284,
-  roofTile:0xc98a6d,
-
-  // Vegetation
-  sage:     0xa8bfa8,
-  greenMid: 0x7d9c82,
-  greenDeep:0x55725f,
-  pine:     0x415f4e,
-
-  // Accents — used sparingly
-  blush:  0xe0a8ac,
-  rose:   0xd48b95,
-  lemon:  0xe8d48a,
-  sun:    0xf0d9a8,
-};

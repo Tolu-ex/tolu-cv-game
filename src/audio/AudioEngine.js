@@ -1,3 +1,4 @@
+import { TitleMusic } from './music.js';
 /**
  * Procedural audio.
  *
@@ -261,6 +262,52 @@ export class AudioEngine {
    * audio parameter once per frame produces audible zipper noise, whereas a
    * short time-constant glides between values.
    */
+  /**
+   * Starts the title-screen music.
+   *
+   * Browsers refuse to run an AudioContext until the page has had a user
+   * gesture, and the title screen appears before the player has given one. So
+   * the context is created anyway and, if it comes up suspended, the first
+   * pointer or key event on the page resumes it — moving the mouse to the
+   * Start button is usually enough. Worst case the music arrives on the click
+   * itself rather than before it, which is why start() fades the music out
+   * instead of cutting it.
+   *
+   * @returns {boolean} true if audio is already running, false if it is
+   *                    waiting on a gesture
+   */
+  startMusic() {
+    this.start();
+    if (!this.ready) return false;
+    if (!this.music) this.music = new TitleMusic(this.ctx, this.bus);
+    this.music.start();
+    if (this.ctx.state === 'suspended') {
+      this._armGestureResume();
+      return false;
+    }
+    return true;
+  }
+
+  /** Fades the title music out. Safe to call when none is playing. */
+  stopMusic(fade = 1.4) {
+    this.music?.stop(fade);
+  }
+
+  _armGestureResume() {
+    if (this._resumeArmed) return;
+    this._resumeArmed = true;
+    const resume = () => {
+      this.ctx?.resume?.();
+      if (this.ctx?.state === 'running') {
+        window.removeEventListener('pointerdown', resume);
+        window.removeEventListener('keydown', resume);
+        this._resumeArmed = false;
+      }
+    };
+    window.addEventListener('pointerdown', resume);
+    window.addEventListener('keydown', resume);
+  }
+
   /** Switches the drivetrain sound. A bicycle has no motor to hum. */
   setVehicle(kind) {
     this.vehicle = kind || 'truck';

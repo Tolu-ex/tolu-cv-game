@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { mesh, stdMat, createCanalHouse, createWindmill, createBike, createLampPost, makeTextTexture } from '../utils/geoBuilders.js';
+import { mesh, createCanalHouse, createWindmill, createBike, createLampPost, makeTextTexture } from '../utils/geoBuilders.js';
 import { PALETTE } from '../utils/colors.js';
 import { seededRandom } from '../utils/rng.js';
 
@@ -57,7 +57,7 @@ function domeBuilding({ radius = 6, height = 10, color = 0x8c3a24 } = {}) {
   // ring of small windows around the drum
   for (let i = 0; i < 12; i++) {
     const a = (i / 12) * Math.PI * 2;
-    const win = mesh(new THREE.PlaneGeometry(0.6, 1.4), 0x1c2b33, { emissive: 0xfff2c9, emissiveIntensity: 0.2, castShadow: false, receiveShadow: false });
+    const win = mesh(new THREE.PlaneGeometry(0.6, 1.4), 0x1c2b33, { emissive: 0xfff2c9, emissiveIntensity: 0.2 });
     win.position.set(Math.sin(a) * (radius + 0.02), height * 0.55, Math.cos(a) * (radius + 0.02));
     win.rotation.y = a;
     g.add(win);
@@ -178,10 +178,10 @@ export function buildHaarlemWorld() {
   }
 
   // Lighting — soft, slightly overcast Dutch daylight
-  group.add(new THREE.AmbientLight(0xffffff, 0.52));
-  const hemi = new THREE.HemisphereLight(0xd9e6ee, 0x8a8f78, 0.42);
+  group.add(new THREE.AmbientLight(0xffffff, 0.22));
+  const hemi = new THREE.HemisphereLight(0xd9e6ee, 0x8a8f78, 0.28);
   group.add(hemi);
-  const sun = new THREE.DirectionalLight(0xfff2df, 0.55);
+  const sun = new THREE.DirectionalLight(0xfff2df, 0.85);
   sun.position.set(-40, 60, 30);
   group.add(sun, sun.target);
 

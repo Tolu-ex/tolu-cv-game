@@ -5,6 +5,7 @@ import { FadeTransition } from './FadeTransition.js';
 import { Truck } from '../entities/Truck.js';
 import { loadTruckModel, buildRigFromModel, applyToonShading } from '../entities/truck/model.js';
 import { buildBike } from '../entities/bike/model.js';
+import { addOutlines, createContactShadow } from '../utils/outline.js';
 import { TruckFX } from '../entities/TruckFX.js';
 import { Portal } from '../entities/Portal.js';
 import { HUD } from '../ui/HUD.js';
@@ -133,6 +134,12 @@ export class Game {
       this.truck.registerVehicle('truck', ({ group, body }) => {
         const rig = buildRigFromModel(scene, { bodyGroup: body, rootGroup: group });
         applyToonShading(scene);
+        // Line work last, so the shells copy the final geometry set. Outlines
+        // are what make the modelled ribs and shut lines read at all: flat
+        // shading alone gives two adjacent panels the same colour.
+        const ink = addOutlines(group, { thickness: 0.0026, color: 0x16240a });
+        console.info(`[truck] outlined ${ink.added} parts (${ink.skipped} skipped)`);
+        group.add(createContactShadow({ radiusX: 1.7, radiusZ: 4.8, opacity: 0.20 }));
         return { rig, profile: TRUCK_PROFILE };
       });
     } catch (err) {
@@ -141,27 +148,67 @@ export class Game {
 
     // The bicycle is procedural, so it costs nothing to build up front and sit
     // hidden until the tulip field asks for it.
-    this.truck.registerVehicle('bike', ({ group }) => buildBike({ rootGroup: group }));
+    this.truck.registerVehicle('bike', ({ group }) => {
+      const built = buildBike({ rootGroup: group });
+      addOutlines(built.scene, { thickness: 0.0026, color: 0x1d2416, minSize: 0.03 });
+      built.scene.add(createContactShadow({ radiusX: 0.45, radiusZ: 1.0, opacity: 0.18 }));
+      return built;
+    });
     this.truck.setVehicle('truck');
 
     this._loadWorldSync('hub');
     this.hud.setProgress(0, THEMED_WORLD_IDS.length);
   }
 
+  /**
+   * Attract mode: the world stays alive behind the title screen, with the
+   * camera drifting slowly around the parked truck. The menu used to sit on an
+   * opaque gradient, so the frame main.js renders behind it was never seen.
+   */
+  startAttract() {
+    if (this._attract) return;
+    this._attract = true;
+    this._attractT = 0;
+    this.chaseCam.distance = 25;
+    this.chaseCam.height = 7.5;
+    this.chaseCam.pitchOffset = 0.13;
+
+    const loop = () => {
+      if (!this._attract) return;
+      requestAnimationFrame(loop);
+      const delta = Math.min(this.clock.getDelta(), 0.05);
+      this._attractT += delta;
+      // Parked ahead of the truck looking back at it, so the title screen sees
+      // the cab and the arm rather than the tailgate. A slow sweep across a
+      // front three-quarter, never swinging round to the back.
+      this.chaseCam.yawOffset = 2.15 + Math.sin(this._attractT * 0.09) * 0.35;
+      this.chaseCam.update(delta, this.truck);
+      for (const p of this.portals) p.update(delta, this._attractT);
+      if (this.currentWorldUpdate) this.currentWorldUpdate(delta, this._attractT);
+      this.renderer.render(this.scene, this.camera);
+    };
+    loop();
+  }
+
+  stopAttract() { this._attract = false; }
+
   start() {
+    this.stopAttract();
+    // Hand the camera back to the player behind the truck.
+    this.chaseCam.yawOffset = 0;
+    this.chaseCam.pitchOffset = 0;
+    this.chaseCam.setFraming(this.truck.cameraFraming);
+    this.chaseCam.snapTo(this.truck);
     this.running = true;
     // Browsers refuse to open an AudioContext outside a user gesture, and the
     // Start Engine click is the only one guaranteed before play begins.
     this.audio.start();
+    // The round has its own soundscape; the menu theme fades out under it.
+    this.audio.stopMusic(1.6);
     this.input.unlock();
     this.hud.show();
     this.clock.start();
     this._tick();
-  }
-
-  /** Dev/testing helper: jump straight to a world without driving there. */
-  jumpTo(id) {
-    return this._transitionTo(id, { fromPortal: id === 'hub' ? null : id, showStory: false });
   }
 
   _clearCurrentWorld() {
@@ -256,24 +303,42 @@ export class Game {
 
     this.audio.whoosh();
     this.audio.duck(true);
-    await this.fade.fadeOut(550);
 
-    if (showStory) {
-      const data = CV_DATA[id];
-      if (data) await this.storyCard.show(data);
+    // Everything between the two fades runs guarded. A world builder that
+    // throws used to strand the player: the fade never lifted, input stayed
+    // locked and `transitioning` stayed true, so the game was a black screen
+    // with no way out and nothing on screen to say why.
+    try {
+      await this.fade.fadeOut(550);
+
+      if (showStory) {
+        const data = CV_DATA[id];
+        if (data) await this.storyCard.show(data);
+      }
+
+      this._loadWorldSync(id, { fromPortal });
+
+      if (THEMED_WORLD_IDS.includes(id)) {
+        this.visited.add(id);
+        this.hud.setProgress(this.visited.size, THEMED_WORLD_IDS.length);
+      }
+    } catch (err) {
+      console.error(`World "${id}" failed to load`, err);
+      // The old world has already been cleared by this point, so falling back
+      // to the hub is the difference between "you are somewhere" and a void.
+      try {
+        if (id !== 'hub') this._loadWorldSync('hub');
+        this.hud.toast('⚠️ That world failed to load — back at the depot');
+      } catch (fallbackErr) {
+        console.error('Hub fallback also failed', fallbackErr);
+      }
+    } finally {
+      // Control comes back whatever happened above.
+      await this.fade.fadeIn(550);
+      this.audio.duck(false);
+      this.input.unlock();
+      this.transitioning = false;
     }
-
-    this._loadWorldSync(id, { fromPortal });
-
-    if (THEMED_WORLD_IDS.includes(id)) {
-      this.visited.add(id);
-      this.hud.setProgress(this.visited.size, THEMED_WORLD_IDS.length);
-    }
-
-    await this.fade.fadeIn(550);
-    this.audio.duck(false);
-    this.input.unlock();
-    this.transitioning = false;
   }
 
   _onRoundEvent(e) {

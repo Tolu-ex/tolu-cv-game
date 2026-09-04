@@ -6,6 +6,10 @@ const loadingScreen = document.getElementById('loading-screen');
 const loadingBarFill = document.getElementById('loading-bar-fill');
 const introScreen = document.getElementById('intro-screen');
 const startButton = document.getElementById('start-button');
+const soundToggles = [
+  document.getElementById('sound-toggle'),
+  document.getElementById('sound-toggle-hud'),
+].filter(Boolean);
 
 async function boot() {
   const game = new Game(canvas);
@@ -32,11 +36,35 @@ async function boot() {
   clearInterval(progressTimer);
   loadingBarFill.style.width = '100%';
 
+  // Sound toggle. Clicking it is also a user gesture, so on a browser that
+  // blocked the AudioContext until now, turning sound ON here is what actually
+  // starts it — which is why it resumes rather than only unmuting.
+  const paintSound = () => {
+    const muted = game.audio.muted;
+    for (const el of soundToggles) {
+      el.classList.toggle('is-muted', muted);
+      el.setAttribute('aria-pressed', String(!muted));
+      el.setAttribute('aria-label', muted ? 'Turn sound on' : 'Turn sound off');
+      const label = el.querySelector('.sound-label');
+      if (label) label.textContent = muted ? 'Sound off' : 'Sound on';
+    }
+  };
+  for (const el of soundToggles) {
+    el.addEventListener('click', () => {
+      const muted = game.audio.toggleMute();
+      if (!muted) game.audio.startMusic();
+      paintSound();
+    });
+  }
+  paintSound();
+
   setTimeout(() => {
     loadingScreen.classList.add('hidden');
     introScreen.classList.remove('hidden');
-    // Render one frame behind the intro screen so it isn't a black void.
-    game.renderer.render(game.scene, game.camera);
+    // The title screen is a window onto the world, not a wall in front of it.
+    game.startAttract();
+    if (!game.audio.muted) game.audio.startMusic();
+    paintSound();
   }, 200);
 
   startButton.addEventListener('click', () => {

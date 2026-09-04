@@ -10,7 +10,6 @@ export const PALETTE = {
     groundDark: 0xa9b89c,
     sky: 0xd8e8f1,          // pale powder blue
     fog: 0xd8e8f1,          // matches sky so distance dissolves into it
-    treeTrunk: 0x8e806c,
     treeLeaf: 0x40614f,     // deep cool green, well below the ground in value
     treeLeafLight: 0x577a61,
     path: 0xece5d6,         // warm ivory against the cool field
@@ -28,15 +27,20 @@ export const PALETTE = {
     windmillBody: 0xd9c9a3,
     windmillCap: 0x5b4636,
   },
+  // Obafemi Awolowo University, Ile-Ife: a landscaped modernist campus, so the
+  // ground is lawn and paving rather than bare earth, and the sky is ordinary
+  // tropical blue rather than the permanent amber that gets reached for
+  // whenever the setting is African.
   ileife: {
-    sky: 0xffd79a,
-    fog: 0xffcf8f,
-    earth: 0xb4552b,
-    earthDark: 0x8f3f1e,
-    building: 0xe8ddb5,
-    buildingAccent: 0xc23b2b,
-    palmTrunk: 0x8a6a42,
-    palmLeaf: 0x3c9a4a,
+    sky: 0xa8d6ee,
+    fog: 0xc6e2f2,
+    lawn: 0x5f9e4a,
+    lawnDark: 0x4f8a3d,
+    paving: 0xcfc9bb,
+    road: 0x54585c,
+    concrete: 0xe6e2d7,       // the campus's pale board-marked concrete
+    concreteShade: 0xc4bfae,  // recesses behind the sun screens
+    canopy: 0x357a3c,         // broad shade trees, which the campus is full of
   },
   lagos: {
     sky: 0xbcd4e6,
@@ -64,7 +68,6 @@ export const PALETTE = {
     boardwalk: 0x2e2f3a,
     tower: 0x8a94a6,
     towerGlow: 0xfff2b0,
-    supertree: 0x3a2e22,
     supertreeCanopy: 0x2fae6a,
     starlight: 0xffffff,
   },
@@ -75,19 +78,6 @@ export const PALETTE = {
     tulipColors: [0xe5395a, 0xffd23f, 0xb84fd8, 0xff7a3d, 0xffffff, 0xff5cad],
     windmillBody: 0xe9dfc4,
     windmillCap: 0x6b4a35,
-  },
-  truck: {
-    // White cab against a green body, as every real refuse truck runs. A
-    // silver-grey cab blended into the bodywork and read as one muddy mass.
-    cab: 0xf6f2ea,
-    cabDark: 0x9aa1a8,
-    container: 0x7f9c76,
-    containerDark: 0x6b8763,
-    chassis: 0x4a545c,
-    glass: 0x9fd7e8,
-    arm: 0xe8c07a,
-    light: 0xfff2b0,
-    tail: 0xff3b30,
   },
   portal: {
     haarlem: 0xff8a3d,

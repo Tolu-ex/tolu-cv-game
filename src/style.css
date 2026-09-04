@@ -46,33 +46,164 @@ html, body {
 }
 
 /* ---------- Intro screen ---------- */
+/* ---------- Title screen ----------
+   A travel poster laid over the living world, not a wall in front of it: the
+   scrim fades out to the right so the truck and the hub stay visible while the
+   copy keeps a solid ground to sit on. */
 #intro-screen {
   position: absolute; inset: 0; z-index: 30;
-  display: flex; align-items: center; justify-content: center;
-  background: linear-gradient(180deg, #163a20 0%, #0b1f10 60%, #060f08 100%);
-  text-align: center;
-  padding: 20px;
+  display: flex; flex-direction: column; justify-content: flex-end;
+  padding: clamp(28px, 6vw, 84px);
+  overflow: hidden;
 }
-.intro-inner { max-width: 560px; }
-.intro-emoji { font-size: 48px; margin-bottom: 6px; }
-#intro-screen h1 {
-  font-size: clamp(28px, 6vw, 46px); font-weight: 900; letter-spacing: 2px;
-  background: linear-gradient(90deg,#c9ff6a,#5cffcf);
-  -webkit-background-clip: text; background-clip: text; color: transparent;
-  margin-bottom: 10px;
+.intro-scrim {
+  position: absolute; inset: 0; pointer-events: none;
+  background:
+    linear-gradient(103deg, rgba(6,16,9,0.94) 0%, rgba(6,16,9,0.86) 30%,
+                            rgba(6,16,9,0.45) 56%, rgba(6,16,9,0.05) 78%),
+    linear-gradient(0deg, rgba(6,16,9,0.75) 0%, rgba(6,16,9,0) 42%);
 }
-.intro-sub { font-size: 15px; opacity: 0.9; margin-bottom: 14px; }
-.intro-desc { font-size: 13.5px; line-height: 1.6; opacity: 0.75; margin-bottom: 26px; }
+.intro-content {
+  position: relative;
+  max-width: 34rem;
+  margin-bottom: auto; margin-top: auto;
+}
+
+/* Eyebrow: small caps with a lime rule, the way a poster labels its subject. */
+.intro-eyebrow {
+  display: flex; align-items: center; gap: 12px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px; font-weight: 600;
+  letter-spacing: 0.22em; text-transform: uppercase;
+  color: #a6e06a;
+  margin: 0 0 22px;
+}
+.intro-rule { display: block; width: 34px; height: 2px; background: #8fd400; }
+
+/* Display type: heavy and TIGHT. The old title tracked +2px apart, which is
+   what made it read as a logo from 2012 rather than a poster masthead. */
+.intro-title {
+  margin: 0 0 20px;
+  font-weight: 900;
+  font-size: clamp(46px, 9vw, 104px);
+  line-height: 0.86;
+  letter-spacing: -0.035em;
+  color: #f3f8ee;
+  text-transform: uppercase;
+}
+.intro-title em {
+  display: block; font-style: normal; color: #8fd400;
+}
+
+.intro-sub {
+  margin: 0 0 14px;
+  font-size: clamp(15px, 1.6vw, 18px); font-weight: 500;
+  color: rgba(243,248,238,0.92);
+}
+.intro-sub strong { color: #fff; font-weight: 700; }
+
+.intro-desc {
+  margin: 0 0 30px;
+  max-width: 30rem;
+  font-size: 14.5px; line-height: 1.62;
+  color: rgba(243,248,238,0.62);
+}
+
 #start-button {
-  font-family: inherit; font-weight: 700; font-size: 16px; letter-spacing: 0.5px;
-  padding: 14px 34px; border-radius: 999px; border: none; cursor: pointer;
-  background: linear-gradient(90deg,#b6ff5c,#42e29a); color: #0a1f0e;
-  box-shadow: 0 8px 24px rgba(120,255,120,0.25);
-  transition: transform 0.15s ease, box-shadow 0.15s ease;
+  display: inline-flex; align-items: center; gap: 10px;
+  padding: 15px 30px;
+  border: none; border-radius: 10px;
+  background: #8fd400; color: #0c1a06;
+  font-family: inherit; font-weight: 700; font-size: 15px;
+  letter-spacing: 0.01em;
+  cursor: pointer;
+  transition: transform 0.16s ease, background 0.16s ease;
 }
-#start-button:hover { transform: translateY(-2px) scale(1.03); box-shadow: 0 12px 30px rgba(120,255,120,0.35); }
-#start-button:active { transform: translateY(0) scale(0.98); }
-.intro-controls { margin-top: 16px; font-size: 12px; opacity: 0.5; letter-spacing: 0.5px; }
+#start-button::after { content: '→'; font-size: 17px; line-height: 1; }
+#start-button:hover { background: #a2ee00; transform: translateY(-2px); }
+#start-button:active { transform: translateY(0); }
+#start-button:focus-visible { outline: 2px solid #f3f8ee; outline-offset: 3px; }
+
+/* The six worlds, listed as hairline chips: says what is inside without a
+   paragraph explaining it. */
+.intro-worlds {
+  display: flex; flex-wrap: wrap; gap: 7px;
+  list-style: none; margin: 30px 0 0; padding: 0;
+}
+.intro-worlds li {
+  padding: 5px 11px;
+  border: 1px solid rgba(243,248,238,0.18);
+  border-radius: 100px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10.5px; letter-spacing: 0.08em; text-transform: uppercase;
+  color: rgba(243,248,238,0.62);
+}
+
+/* Sound toggle.
+   The title screen starts music before the visitor has asked for any, and the
+   only other control is an M key that is neither visible nor bound until the
+   round begins. Someone opening this at work needs a way to silence it that
+   they can see. The choice persists in localStorage, so it is remembered. */
+.sound-toggle {
+  position: absolute; top: clamp(20px, 4vw, 40px); right: clamp(20px, 4vw, 40px);
+  z-index: 2;
+  display: inline-flex; align-items: center; gap: 9px;
+  padding: 9px 15px 9px 12px;
+  border: 1px solid rgba(243,248,238,0.22); border-radius: 100px;
+  background: rgba(6,16,9,0.55);
+  -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px);
+  color: rgba(243,248,238,0.82);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase;
+  cursor: pointer;
+  transition: border-color 0.15s ease, color 0.15s ease, background 0.15s ease;
+}
+.sound-toggle:hover { border-color: rgba(243,248,238,0.5); color: #f3f8ee; }
+.sound-toggle:focus-visible { outline: 2px solid #8fd400; outline-offset: 3px; }
+.sound-toggle svg { width: 17px; height: 17px; display: block; }
+.sound-toggle .spk-body { fill: currentColor; }
+.sound-toggle .spk-on,
+.sound-toggle .spk-off { fill: none; stroke: currentColor; stroke-width: 1.9; stroke-linecap: round; }
+
+/* One icon, two states: the waves and the cross swap. */
+.sound-toggle .spk-off { display: none; }
+.sound-toggle.is-muted .spk-on { display: none; }
+.sound-toggle.is-muted .spk-off { display: block; }
+.sound-toggle.is-muted { color: rgba(243,248,238,0.45); }
+
+/* In the HUD it is icon-only, and needs pointer events back — #hud sets
+   pointer-events: none so the canvas stays draggable underneath it. */
+.sound-toggle--hud {
+  position: static;
+  padding: 8px; gap: 0;
+  pointer-events: auto;
+}
+.sound-toggle--hud .sound-label { display: none; }
+
+.intro-controls {
+  position: relative;
+  margin: 0; display: flex; align-items: center; flex-wrap: wrap; gap: 6px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px; letter-spacing: 0.06em;
+  color: rgba(243,248,238,0.45);
+}
+.intro-controls .k {
+  display: inline-grid; place-items: center;
+  min-width: 21px; height: 21px; padding: 0 5px;
+  border: 1px solid rgba(243,248,238,0.24); border-radius: 5px;
+  font-size: 10px; color: rgba(243,248,238,0.8);
+}
+.intro-controls .sep { opacity: 0.35; margin: 0 4px; }
+
+@media (max-width: 720px) {
+  /* Narrow screens have no room for the world beside the copy, so the scrim
+     goes flat and the poster takes the full width. */
+  .intro-scrim {
+    background: linear-gradient(0deg, rgba(6,16,9,0.96) 30%, rgba(6,16,9,0.72) 100%);
+  }
+  .intro-content { max-width: none; }
+  .intro-desc { max-width: none; }
+}
 
 /* ---------- HUD ---------- */
 #hud { position: absolute; inset: 0; z-index: 20; pointer-events: none; font-family: 'JetBrains Mono', monospace; }
@@ -85,7 +216,10 @@ html, body {
 #world-name { font-weight: 700; font-size: 15px; letter-spacing: 0.5px; color: #d7ffb0; }
 #portal-progress { font-size: 11px; opacity: 0.65; margin-top: 4px; letter-spacing: 0.5px; }
 
-#hud-top-right { position: absolute; top: 18px; right: 18px; }
+#hud-top-right {
+  position: absolute; top: 18px; right: 18px;
+  display: flex; align-items: center; gap: 10px;
+}
 #speedometer {
   background: rgba(8,20,12,0.55); backdrop-filter: blur(6px);
   border: 1px solid rgba(255,255,255,0.1); border-radius: 12px;

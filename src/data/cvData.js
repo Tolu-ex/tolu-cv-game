@@ -18,7 +18,7 @@ export const CV_DATA = {
     ],
   },
   ileife: {
-    icon: '🌍',
+    icon: '🇳🇬',
     title: 'Ile-Ife, Nigeria',
     subtitle: 'Education — Obafemi Awolowo University (OAU)',
     tags: ['B.Sc. Computer Science', 'OAU'],
@@ -51,7 +51,7 @@ export const CV_DATA = {
     ],
   },
   singapore: {
-    icon: '🌏',
+    icon: '🇸🇬',
     title: 'Singapore',
     subtitle: 'International collaboration',
     tags: ['Remote work', 'APAC'],
