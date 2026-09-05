@@ -6,6 +6,8 @@ import { Truck } from '../entities/Truck.js';
 import { loadTruckModel, buildRigFromModel, applyToonShading } from '../entities/truck/model.js';
 import { buildBike } from '../entities/bike/model.js';
 import { addOutlines, createContactShadow } from '../utils/outline.js';
+import { isDiorama } from '../utils/artDirection.js';
+import { TiltShiftRenderer } from '../render/TiltShift.js';
 import { TruckFX } from '../entities/TruckFX.js';
 import { Portal } from '../entities/Portal.js';
 import { HUD } from '../ui/HUD.js';
@@ -63,14 +65,27 @@ export class Game {
     this.renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance' });
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
-    // Flat-vector art direction: every realism feature is off on purpose.
-    // Cast shadows put soft gradients under objects, and filmic tone mapping
-    // rolls off exactly the pale, high-key colours the poster look depends on.
-    this.renderer.shadowMap.enabled = false;
-    this.renderer.toneMapping = THREE.NoToneMapping;
+    // The two art directions want opposite renderers.
+    //
+    // Poster: every realism feature off. Cast shadows put soft gradients under
+    // objects and filmic tone mapping rolls off the pale high-key colours the
+    // flat look depends on.
+    //
+    // Diorama: both back on. A model photographed on a table is defined by soft
+    // shadows pooling under everything and a photographic response curve — those
+    // are the cues that say "this is a physical object", and without them no
+    // amount of depth of field reads as miniature.
+    this.renderer.shadowMap.enabled = isDiorama();
+    this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    this.renderer.toneMapping = isDiorama() ? THREE.ACESFilmicToneMapping : THREE.NoToneMapping;
+    this.renderer.toneMappingExposure = isDiorama() ? 1.45 : 1;
 
     this.scene = new THREE.Scene();
     this.camera = new THREE.PerspectiveCamera(58, window.innerWidth / window.innerHeight, 0.1, 600);
+
+    // Depth of field is what actually sells the miniature read, so in diorama
+    // mode the scene goes through a composer instead of straight to the canvas.
+    this.tiltShift = isDiorama() ? new TiltShiftRenderer(this.renderer, this.scene, this.camera) : null;
 
     this.clock = new THREE.Clock();
     this.input = new InputController(canvas);
@@ -120,6 +135,7 @@ export class Game {
     this.camera.aspect = window.innerWidth / window.innerHeight;
     this.camera.updateProjectionMatrix();
     this.renderer.setSize(window.innerWidth, window.innerHeight);
+    this.tiltShift?.setSize(window.innerWidth, window.innerHeight);
     this.miniMap?.resize();
   }
 
@@ -133,13 +149,21 @@ export class Game {
       const scene = await loadTruckModel();
       this.truck.registerVehicle('truck', ({ group, body }) => {
         const rig = buildRigFromModel(scene, { bodyGroup: body, rootGroup: group });
-        applyToonShading(scene);
+        // The model was authored with clearcoat paint, transmissive glass and
+        // emissive strength. Toon shading throws all of that away, which is
+        // right for the poster look and wrong for a diorama — so in diorama
+        // mode the authored materials are simply kept.
+        if (!isDiorama()) applyToonShading(scene);
         // Line work last, so the shells copy the final geometry set. Outlines
         // are what make the modelled ribs and shut lines read at all: flat
         // shading alone gives two adjacent panels the same colour.
-        const ink = addOutlines(group, { thickness: 0.0026, color: 0x16240a });
-        console.info(`[truck] outlined ${ink.added} parts (${ink.skipped} skipped)`);
-        group.add(createContactShadow({ radiusX: 1.7, radiusZ: 4.8, opacity: 0.20 }));
+        if (!isDiorama()) {
+          const ink = addOutlines(group, { thickness: 0.0026, color: 0x16240a });
+          console.info(`[truck] outlined ${ink.added} parts (${ink.skipped} skipped)`);
+          // The contact shadow stands in for a real one. With shadows enabled
+          // it would double up, so the diorama gets the real thing instead.
+          group.add(createContactShadow({ radiusX: 1.7, radiusZ: 4.8, opacity: 0.20 }));
+        }
         return { rig, profile: TRUCK_PROFILE };
       });
     } catch (err) {
@@ -150,8 +174,10 @@ export class Game {
     // hidden until the tulip field asks for it.
     this.truck.registerVehicle('bike', ({ group }) => {
       const built = buildBike({ rootGroup: group });
-      addOutlines(built.scene, { thickness: 0.0026, color: 0x1d2416, minSize: 0.03 });
-      built.scene.add(createContactShadow({ radiusX: 0.45, radiusZ: 1.0, opacity: 0.18 }));
+      if (!isDiorama()) {
+        addOutlines(built.scene, { thickness: 0.0026, color: 0x1d2416, minSize: 0.03 });
+        built.scene.add(createContactShadow({ radiusX: 0.45, radiusZ: 1.0, opacity: 0.18 }));
+      }
       return built;
     });
     this.truck.setVehicle('truck');
@@ -185,7 +211,7 @@ export class Game {
       this.chaseCam.update(delta, this.truck);
       for (const p of this.portals) p.update(delta, this._attractT);
       if (this.currentWorldUpdate) this.currentWorldUpdate(delta, this._attractT);
-      this.renderer.render(this.scene, this.camera);
+      this._render();
     };
     loop();
   }
@@ -236,6 +262,8 @@ export class Game {
     this.currentWorldUpdate = desc.update || null;
     this.currentBounds = desc.bounds || 120;
     this.currentWorldId = id;
+
+    if (isDiorama()) this._enableShadows(desc);
 
     this.scene.background = new THREE.Color(desc.sky);
     this.scene.fog = new THREE.Fog(desc.fog, desc.fogNear ?? 40, desc.fogFar ?? 200);
@@ -293,6 +321,53 @@ export class Game {
       viewRadius: desc.mapViewRadius ?? 60,
       night: !!desc.night,
       hide: [this.truck.group, this.truckFX.group, ...this.portals.map((p) => p.group)],
+    });
+  }
+
+  /**
+   * Turns the world into something that casts and receives shadows.
+   *
+   * Done here rather than in each world file: the shadow flags were stripped
+   * out of all seven worlds when the flat look made them dead configuration,
+   * and putting them back in every builder would be seven copies of the same
+   * loop. The sun's shadow camera is fitted to the world's own bounds, since a
+   * frustum sized for the hub wastes most of its resolution in Haarlem.
+   */
+  _enableShadows(desc) {
+    const bounds = desc.bounds || 120;
+    desc.group.traverse((o) => {
+      if (o.isMesh) {
+        // Ground planes only receive; making them cast produces acne and buys
+        // nothing, since there is nothing underneath them.
+        const isGround = o.geometry?.type === 'PlaneGeometry' || o.geometry?.type === 'CircleGeometry';
+        o.castShadow = !isGround;
+        o.receiveShadow = true;
+      }
+      // Light intensities in this project were tuned for MeshToonMaterial,
+      // where the ramp does most of the work. Under physically-based shading
+      // with a filmic curve those same numbers render almost black — a 0.85
+      // "sun" is nowhere near sunlight. Each world's balance is preserved and
+      // simply scaled up.
+      if (o.isAmbientLight || o.isHemisphereLight) {
+        if (!o.userData.baseIntensity) o.userData.baseIntensity = o.intensity;
+        o.intensity = o.userData.baseIntensity * 2.4;
+      }
+      if (o.isDirectionalLight) {
+        if (!o.userData.baseIntensity) o.userData.baseIntensity = o.intensity;
+        o.intensity = o.userData.baseIntensity * 3.4;
+        o.castShadow = true;
+        o.shadow.mapSize.set(2048, 2048);
+        const c = o.shadow.camera;
+        c.left = -bounds; c.right = bounds;
+        c.top = bounds; c.bottom = -bounds;
+        c.near = 1; c.far = bounds * 4;
+        c.updateProjectionMatrix();
+        // Soft edges and a bias tuned to stop the faceted low-poly surfaces
+        // shadowing themselves.
+        o.shadow.radius = 3;
+        o.shadow.bias = -0.0008;
+        o.shadow.normalBias = 0.04;
+      }
     });
   }
 
@@ -364,6 +439,20 @@ export class Game {
       this.audio.depotDump();
       this.hud.setRound(e);
       this.hud.toast(`♻️ Tipped ${e.tipped} bins  ·  +${e.tipped * 50} bonus`);
+    }
+  }
+
+  /**
+   * Draws a frame. In diorama mode the focal plane is pinned to the vehicle, so
+   * the thing the player is steering is always the sharp thing and everything
+   * else falls away.
+   */
+  _render() {
+    if (this.tiltShift) {
+      this.tiltShift.focusOn(this.truck.position);
+      this.tiltShift.render();
+    } else {
+      this.renderer.render(this.scene, this.camera);
     }
   }
 
@@ -443,6 +532,6 @@ export class Game {
 
     this._checkPortals();
 
-    this.renderer.render(this.scene, this.camera);
+    this._render();
   }
 }
