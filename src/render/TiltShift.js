@@ -27,8 +27,9 @@ const TiltShiftShader = {
     cameraNear: { value: 0.1 },
     cameraFar: { value: 600 },
     focusDistance: { value: 14 },   // metres from the camera
-    focusRange: { value: 7 },       // metres either side that stay sharp
-    maxBlur: { value: 0.0075 },     // blur radius, in UV
+    focusNear: { value: 5 },        // metres in front of the plane that stay sharp
+    focusFar: { value: 52 },        // metres behind it that stay sharp
+    maxBlur: { value: 0.0034 },     // blur radius, in UV
     aspect: { value: 1 },
   },
   vertexShader: /* glsl */`
@@ -43,7 +44,7 @@ const TiltShiftShader = {
     uniform sampler2D tDiffuse;
     uniform sampler2D tDepth;
     uniform float cameraNear, cameraFar;
-    uniform float focusDistance, focusRange, maxBlur, aspect;
+    uniform float focusDistance, focusNear, focusFar, maxBlur, aspect;
     varying vec2 vUv;
 
     // Depth buffer -> distance from the camera, in world units.
@@ -66,10 +67,14 @@ const TiltShiftShader = {
     void main() {
       float dist = viewDistance(vUv);
 
-      // Circle of confusion: zero inside the focal band, ramping to full blur
-      // beyond it. Squared so the transition out of focus is gentle rather
-      // than a visible edge.
-      float coc = clamp((abs(dist - focusDistance) - focusRange) / (focusRange * 2.0), 0.0, 1.0);
+      // Near and far are deliberately NOT symmetric. Blurring the ground close
+      // to the camera sells the miniature; blurring the road ahead makes the
+      // game unplayable, because portals, bins and the route all live there.
+      // So the far side keeps a long sharp throw and only the true distance
+      // goes soft.
+      float delta = dist - focusDistance;
+      float range = delta < 0.0 ? focusNear : focusFar;
+      float coc = clamp((abs(delta) - range) / (range * 1.6), 0.0, 1.0);
       coc *= coc;
 
       if (coc < 0.003) {
@@ -89,7 +94,9 @@ const TiltShiftShader = {
         // Do not let a sharp foreground bleed outwards over a blurred
         // background: only accept a tap that is itself at least as defocused.
         float tapDist = viewDistance(uv);
-        float tapCoc = clamp((abs(tapDist - focusDistance) - focusRange) / (focusRange * 2.0), 0.0, 1.0);
+        float tapDelta = tapDist - focusDistance;
+        float tapRange = tapDelta < 0.0 ? focusNear : focusFar;
+        float tapCoc = clamp((abs(tapDelta) - tapRange) / (tapRange * 1.6), 0.0, 1.0);
         float w = step(coc * 0.4, tapCoc * tapCoc);
 
         sum += texture2D(tDiffuse, uv) * w;
@@ -134,10 +141,8 @@ export class TiltShiftRenderer {
   }
 
   /** Points the focal plane at a world position — normally the player vehicle. */
-  focusOn(worldPosition, { range = null } = {}) {
-    const d = this.camera.position.distanceTo(worldPosition);
-    this.dof.uniforms.focusDistance.value = d;
-    if (range != null) this.dof.uniforms.focusRange.value = range;
+  focusOn(worldPosition) {
+    this.dof.uniforms.focusDistance.value = this.camera.position.distanceTo(worldPosition);
   }
 
   setScene(scene) { this.renderPass.scene = scene; }

@@ -77,8 +77,13 @@ export class Game {
     // amount of depth of field reads as miniature.
     this.renderer.shadowMap.enabled = isDiorama();
     this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-    this.renderer.toneMapping = isDiorama() ? THREE.ACESFilmicToneMapping : THREE.NoToneMapping;
-    this.renderer.toneMappingExposure = isDiorama() ? 1.45 : 1;
+    // ACES is a cinema curve: contrasty, and it crushes the low end. It took
+    // the whole scene to a mean luma of 81 out of 255, about half the poster
+    // build. Neutral (Khronos PBR Neutral) keeps brightness and saturation and
+    // only rolls off the highlights, which is what a well-lit model on a table
+    // actually looks like.
+    this.renderer.toneMapping = isDiorama() ? THREE.NeutralToneMapping : THREE.NoToneMapping;
+    this.renderer.toneMappingExposure = isDiorama() ? 1.15 : 1;
 
     this.scene = new THREE.Scene();
     this.camera = new THREE.PerspectiveCamera(58, window.innerWidth / window.innerHeight, 0.1, 600);
@@ -350,11 +355,11 @@ export class Game {
       // simply scaled up.
       if (o.isAmbientLight || o.isHemisphereLight) {
         if (!o.userData.baseIntensity) o.userData.baseIntensity = o.intensity;
-        o.intensity = o.userData.baseIntensity * 2.4;
+        o.intensity = o.userData.baseIntensity * 4.2;
       }
       if (o.isDirectionalLight) {
         if (!o.userData.baseIntensity) o.userData.baseIntensity = o.intensity;
-        o.intensity = o.userData.baseIntensity * 3.4;
+        o.intensity = o.userData.baseIntensity * 6.0;
         o.castShadow = true;
         o.shadow.mapSize.set(2048, 2048);
         const c = o.shadow.camera;
