@@ -35,11 +35,6 @@ in this repo and cost real work.
 
 ## Blockers — these gate sharing the game at all
 
-- [ ] **Touch controls.** `src/core/InputController.js` has zero touch handling.
-      On a phone or tablet the game loads and cannot be played: touch orbits the
-      camera, and there is no throttle or steering. Needs an on-screen
-      throttle/brake and a steering control, and the title screen should stop
-      advertising `WASD` on devices with no keyboard.
 - [ ] **Deploy.** `vercel.json` is configured and has never been used. There is
       no live URL to send anyone.
 - [ ] **Real CV copy.** `src/data/cvData.js` is placeholder. **Agent: skip this
@@ -84,6 +79,9 @@ in this repo and cost real work.
 
 ## Done
 
+- [x] Touch controls: on-screen throttle/brake and steering pads, wired to
+      the same booleans the keys use; the title screen and in-round hint stop
+      advertising WASD on a touch-primary device
 - [x] World lighting rebalanced; toon ramp widened so form reads
 - [x] Inked outlines and contact shadows on both vehicles
 - [x] Truck hydraulics rebuilt as a real mechanism with a kinematic chain

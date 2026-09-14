@@ -15,11 +15,12 @@ const CAM_UP_KEYS = new Set(['KeyR']);
 const CAM_DOWN_KEYS = new Set(['KeyF']);
 
 /**
- * Keyboard + mouse input.
+ * Keyboard + mouse + touch input.
  *
  * Keyboard drives the truck; the mouse orbits the camera Roblox-style — drag to
- * swing the view around, wheel to zoom. Can be locked during transitions and
- * story cards.
+ * swing the view around, wheel to zoom. On a touch device the on-screen pads
+ * (see _bindTouchControls) drive it instead, feeding the same booleans the
+ * keys do. Can be locked during transitions and story cards.
  */
 export class InputController {
   constructor(canvas) {
@@ -67,6 +68,45 @@ export class InputController {
     document.addEventListener('visibilitychange', this._onVisibility);
 
     this._bindPointer(canvas || window);
+    this._bindTouchControls();
+  }
+
+  /**
+   * On-screen throttle/brake and steering pads for touch devices. They set
+   * exactly the same booleans the matching keys do, so locking, clearKeys()
+   * and every consumer downstream need no touch-specific handling at all.
+   */
+  _bindTouchControls() {
+    const buttons = [
+      ['touch-forward', 'forward'],
+      ['touch-backward', 'backward'],
+      ['touch-left', 'left'],
+      ['touch-right', 'right'],
+    ];
+    this._touchBindings = [];
+    for (const [id, prop] of buttons) {
+      const btn = document.getElementById(id);
+      if (!btn) continue; // absent in contexts with no touch-controls markup, e.g. tests
+      const press = (e) => {
+        e.preventDefault();
+        if (this.locked) return; // ignore new presses while locked, like a key
+        this[prop] = true;
+        btn.classList.add('is-pressed');
+        // Best-effort: keeps pointerup reaching this button even if the
+        // finger drags off it. Not load-bearing, so a capture failure
+        // shouldn't take the state change above down with it.
+        try { btn.setPointerCapture?.(e.pointerId); } catch { /* no active pointer to capture */ }
+      };
+      const release = (e) => {
+        e.preventDefault();
+        btn.classList.remove('is-pressed');
+        this[prop] = false;
+      };
+      btn.addEventListener('pointerdown', press);
+      btn.addEventListener('pointerup', release);
+      btn.addEventListener('pointercancel', release);
+      this._touchBindings.push({ btn, press, release });
+    }
   }
 
   _bindPointer(el) {
@@ -213,5 +253,10 @@ export class InputController {
     window.removeEventListener('pointercancel', this._onPointerUp);
     this._el?.removeEventListener('wheel', this._onWheel);
     this._el?.removeEventListener('contextmenu', this._onContextMenu);
+    for (const { btn, press, release } of this._touchBindings) {
+      btn.removeEventListener('pointerdown', press);
+      btn.removeEventListener('pointerup', release);
+      btn.removeEventListener('pointercancel', release);
+    }
   }
 }
