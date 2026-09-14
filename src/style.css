@@ -329,6 +329,40 @@ html, body {
 .or { opacity: 0.4; margin: 0 3px; }
 .hint-text { margin-left: 8px; opacity: 0.75; }
 
+/* ---------- Touch driving controls ----------
+   Digital left/right/forward/backward pads, mirroring exactly the keys they
+   stand in for (no analog input the truck sim doesn't read). Hidden by
+   default and only switched on for a touch-primary device — a laptop with a
+   touchscreen still has a keyboard, so it keeps the WASD hint instead. */
+#touch-controls { display: none; }
+.touch-pad { position: absolute; bottom: 18px; display: flex; gap: 12px; pointer-events: none; }
+#touch-steer { left: 18px; }
+#touch-throttle { left: 50%; transform: translateX(-50%); flex-direction: column; }
+.touch-btn {
+  pointer-events: auto;
+  width: 58px; height: 58px;
+  display: grid; place-items: center;
+  border: 1px solid rgba(243,248,238,0.28); border-radius: 50%;
+  background: rgba(8,20,12,0.55); backdrop-filter: blur(6px);
+  color: rgba(243,248,238,0.85);
+  font-size: 22px; line-height: 1;
+  touch-action: none; -webkit-user-select: none; user-select: none;
+  -webkit-touch-callout: none;
+}
+.touch-btn.is-pressed { background: rgba(182,255,92,0.35); border-color: rgba(182,255,92,0.65); color: #f3f8ee; }
+
+@media (hover: none) and (pointer: coarse) {
+  #touch-controls { display: block; }
+  /* These advertise keys a touchscreen with no keyboard doesn't have. */
+  #controls-hint, .intro-controls { display: none; }
+}
+
+@media (max-width: 560px) {
+  .touch-btn { width: 50px; height: 50px; font-size: 19px; }
+  .touch-pad { bottom: 14px; gap: 10px; }
+  #touch-steer { left: 14px; }
+}
+
 /* ---------- Story card ---------- */
 #story-card-wrap {
   position: absolute; inset: 0; z-index: 35;
