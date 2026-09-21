@@ -329,6 +329,47 @@ html, body {
 .or { opacity: 0.4; margin: 0 3px; }
 .hint-text { margin-left: 8px; opacity: 0.75; }
 
+/* ---------- Touch controls ---------- */
+/* Steering bottom-left, throttle/brake bottom-right, stacked well clear of
+   the minimap in the same corner (#minimap-wrap, below). #hud already sets
+   pointer-events: none, so only the buttons themselves opt back in. */
+#touch-controls { position: absolute; inset: 0; z-index: 21; }
+#touch-steer, #touch-throttle {
+  position: absolute; bottom: 18px;
+  display: flex; gap: 10px;
+}
+#touch-steer { left: 18px; }
+#touch-throttle { right: 18px; bottom: 180px; flex-direction: column; }
+
+.touch-btn {
+  pointer-events: auto;
+  width: 64px; height: 64px;
+  display: grid; place-items: center;
+  border: 1px solid rgba(255,255,255,0.18); border-radius: 16px;
+  background: rgba(8,20,12,0.55);
+  -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px);
+  color: #eafff0; font-size: 26px; line-height: 1;
+  touch-action: none; -webkit-user-select: none; user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  transition: background 0.1s ease, transform 0.1s ease;
+}
+.touch-btn--primary { border-color: rgba(182,255,92,0.5); }
+.touch-btn.is-active {
+  background: rgba(182,255,92,0.35);
+  transform: scale(0.94);
+}
+
+@media (max-width: 900px) {
+  #touch-throttle { bottom: 160px; }
+  .touch-btn { width: 58px; height: 58px; font-size: 23px; border-radius: 14px; }
+}
+
+@media (max-width: 560px) {
+  #touch-steer, #touch-throttle { gap: 8px; bottom: 12px; }
+  #touch-throttle { bottom: 138px; }
+  .touch-btn { width: 52px; height: 52px; font-size: 20px; border-radius: 12px; }
+}
+
 /* ---------- Story card ---------- */
 #story-card-wrap {
   position: absolute; inset: 0; z-index: 35;
