@@ -175,17 +175,30 @@ export class InputController {
   }
 
   _set(code, value) {
-    if (this.locked && value) return; // ignore new presses while locked
-    if (FORWARD_KEYS.has(code)) this.forward = value;
-    else if (BACKWARD_KEYS.has(code)) this.backward = value;
-    else if (LEFT_KEYS.has(code)) this.left = value;
-    else if (RIGHT_KEYS.has(code)) this.right = value;
-    else if (BRAKE_KEYS.has(code)) this.brake = value;
-    else if (CAM_LEFT_KEYS.has(code)) this.camLeft = value;
-    else if (CAM_RIGHT_KEYS.has(code)) this.camRight = value;
-    else if (CAM_UP_KEYS.has(code)) this.camUp = value;
-    else if (CAM_DOWN_KEYS.has(code)) this.camDown = value;
+    if (FORWARD_KEYS.has(code)) this._apply('forward', value);
+    else if (BACKWARD_KEYS.has(code)) this._apply('backward', value);
+    else if (LEFT_KEYS.has(code)) this._apply('left', value);
+    else if (RIGHT_KEYS.has(code)) this._apply('right', value);
+    else if (BRAKE_KEYS.has(code)) this._apply('brake', value);
+    else if (CAM_LEFT_KEYS.has(code)) this._apply('camLeft', value);
+    else if (CAM_RIGHT_KEYS.has(code)) this._apply('camRight', value);
+    else if (CAM_UP_KEYS.has(code)) this._apply('camUp', value);
+    else if (CAM_DOWN_KEYS.has(code)) this._apply('camDown', value);
   }
+
+  _apply(prop, value) {
+    if (this.locked && value) return; // ignore new presses while locked
+    this[prop] = value;
+  }
+
+  // Touch equivalents of the WASD keys, driven by on-screen buttons rather
+  // than a keyboard event. Routed through the same locked-aware setter so a
+  // finger held down through a world transition doesn't start the truck
+  // moving the instant input unlocks.
+  setForward(value) { this._apply('forward', value); }
+  setBackward(value) { this._apply('backward', value); }
+  setLeft(value) { this._apply('left', value); }
+  setRight(value) { this._apply('right', value); }
 
   lock() {
     this.locked = true;

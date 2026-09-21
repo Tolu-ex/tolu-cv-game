@@ -1,11 +1,21 @@
 import './style.css';
 import { Game } from './core/Game.js';
+import { isTouchDevice } from './utils/device.js';
 
 const canvas = document.getElementById('scene');
 const loadingScreen = document.getElementById('loading-screen');
 const loadingBarFill = document.getElementById('loading-bar-fill');
 const introScreen = document.getElementById('intro-screen');
+const introControls = document.getElementById('intro-controls');
 const startButton = document.getElementById('start-button');
+
+// A touch-primary device has no keyboard to advertise: the title screen's
+// WASD/Space/QE hint would just be wrong, so it's swapped for what actually
+// drives the truck there — the on-screen controls TouchControls builds once
+// the round starts.
+if (introControls && isTouchDevice()) {
+  introControls.textContent = 'On-screen throttle, brake and steering — no keyboard needed';
+}
 const soundToggles = [
   document.getElementById('sound-toggle'),
   document.getElementById('sound-toggle-hud'),

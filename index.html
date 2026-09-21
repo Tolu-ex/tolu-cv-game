@@ -62,6 +62,19 @@
             <span class="hint-text">drive · <span class="key">SPACE</span> brake · <span class="key">L</span> lights · <span class="key">Q</span><span class="key">E</span> turn view · <span class="key">R</span><span class="key">F</span> tilt · scroll zoom · <span class="key">C</span> recentre · <span class="key">M</span> mute</span>
           </div>
         </div>
+
+        <!-- Touch controls: on-screen throttle/brake and steering, shown only
+             on a touch-primary device (see TouchControls.js). -->
+        <div id="touch-controls" class="hidden">
+          <div id="touch-steer">
+            <button id="touch-left" class="touch-btn" type="button" aria-label="Steer left">◀</button>
+            <button id="touch-right" class="touch-btn" type="button" aria-label="Steer right">▶</button>
+          </div>
+          <div id="touch-throttle">
+            <button id="touch-forward" class="touch-btn touch-btn--primary" type="button" aria-label="Accelerate">▲</button>
+            <button id="touch-brake" class="touch-btn" type="button" aria-label="Brake / reverse">▼</button>
+          </div>
+        </div>
       </div>
 
       <!-- Story card -->
@@ -106,7 +119,7 @@
           </svg>
           <span class="sound-label">Sound on</span>
         </button>
-        <p class="intro-controls">
+        <p class="intro-controls" id="intro-controls">
           <span class="k">W</span><span class="k">A</span><span class="k">S</span><span class="k">D</span> drive
           <span class="sep">/</span> <span class="k">Space</span> brake
           <span class="sep">/</span> <span class="k">Q</span><span class="k">E</span> camera

@@ -11,11 +11,13 @@ import { Portal } from '../entities/Portal.js';
 import { HUD } from '../ui/HUD.js';
 import { StoryCard } from '../ui/StoryCard.js';
 import { MiniMap } from '../ui/MiniMap.js';
+import { TouchControls } from '../ui/TouchControls.js';
 import { RoundManager } from './RoundManager.js';
 import { AudioEngine } from '../audio/AudioEngine.js';
 import { CV_DATA } from '../data/cvData.js';
 import { disposeObject3D, seedDecor } from '../utils/geoBuilders.js';
 import { seededRandom } from '../utils/rng.js';
+import { isTouchDevice } from '../utils/device.js';
 
 import { buildHubWorld, HUB_PORTAL_DEFS } from '../worlds/HubWorld.js';
 import { buildHaarlemWorld } from '../worlds/HaarlemWorld.js';
@@ -84,6 +86,9 @@ export class Game {
       document.getElementById('minimap'),
       document.getElementById('minimap-caption'),
     );
+    // Only built on a touch-primary device — the keyboard is the whole input
+    // model otherwise, and there's nothing to show or wire up.
+    if (isTouchDevice()) new TouchControls(this.input);
 
     this.truck = new Truck();
     this.scene.add(this.truck.group);
