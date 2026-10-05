@@ -62,6 +62,20 @@
             <span class="hint-text">drive · <span class="key">SPACE</span> brake · <span class="key">L</span> lights · <span class="key">Q</span><span class="key">E</span> turn view · <span class="key">R</span><span class="key">F</span> tilt · scroll zoom · <span class="key">C</span> recentre · <span class="key">M</span> mute</span>
           </div>
         </div>
+
+        <!-- Touch controls: CSS-only hidden on anything with a precise
+             pointer, see #touch-controls in style.css. -->
+        <div id="touch-controls">
+          <div id="touch-steer">
+            <button id="touch-left" class="touch-btn touch-btn--steer" type="button" aria-label="Steer left">◀</button>
+            <button id="touch-right" class="touch-btn touch-btn--steer" type="button" aria-label="Steer right">▶</button>
+          </div>
+          <div id="touch-pedals">
+            <button id="touch-reverse" class="touch-btn touch-btn--reverse" type="button" aria-label="Reverse">R</button>
+            <button id="touch-brake" class="touch-btn touch-btn--brake" type="button" aria-label="Brake">BRAKE</button>
+            <button id="touch-gas" class="touch-btn touch-btn--gas" type="button" aria-label="Accelerate">GAS</button>
+          </div>
+        </div>
       </div>
 
       <!-- Story card -->
@@ -111,6 +125,9 @@
           <span class="sep">/</span> <span class="k">Space</span> brake
           <span class="sep">/</span> <span class="k">Q</span><span class="k">E</span> camera
         </p>
+        <!-- Shown instead of the keyboard hint above on devices with no
+             keyboard — see the shared media query in style.css. -->
+        <p class="intro-controls intro-controls--touch">Steering and pedals appear on screen once you start</p>
       </div>
     </div>
     <script type="module" src="/src/main.js"></script>
