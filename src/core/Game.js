@@ -11,6 +11,7 @@ import { Portal } from '../entities/Portal.js';
 import { HUD } from '../ui/HUD.js';
 import { StoryCard } from '../ui/StoryCard.js';
 import { MiniMap } from '../ui/MiniMap.js';
+import { TouchControls } from '../ui/TouchControls.js';
 import { RoundManager } from './RoundManager.js';
 import { AudioEngine } from '../audio/AudioEngine.js';
 import { CV_DATA } from '../data/cvData.js';
@@ -78,6 +79,7 @@ export class Game {
     this.chaseCam = new ChaseCamera(this.camera);
     this.fade = new FadeTransition(document.getElementById('fade-overlay'));
     this.hud = new HUD();
+    this.touchControls = new TouchControls(this.input);
     this.storyCard = new StoryCard();
     this.miniMap = new MiniMap(
       this.renderer,

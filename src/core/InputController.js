@@ -174,6 +174,21 @@ export class InputController {
     return { dx, dy };
   }
 
+  /**
+   * Touch-button equivalent of a held key. TouchControls calls this instead
+   * of dispatching synthetic keyboard events, but it obeys the same lock
+   * rule as `_set` so an on-screen press during a transition is ignored
+   * exactly like a keypress would be.
+   */
+  setTouch(control, value) {
+    if (this.locked && value) return;
+    if (control === 'forward') this.forward = value;
+    else if (control === 'backward') this.backward = value;
+    else if (control === 'left') this.left = value;
+    else if (control === 'right') this.right = value;
+    else if (control === 'brake') this.brake = value;
+  }
+
   _set(code, value) {
     if (this.locked && value) return; // ignore new presses while locked
     if (FORWARD_KEYS.has(code)) this.forward = value;

@@ -195,6 +195,15 @@ html, body {
 }
 .intro-controls .sep { opacity: 0.35; margin: 0 4px; }
 
+/* The keyboard hint only makes sense where there is a keyboard. Swapped for
+   the touch hint below on anything whose primary input is an imprecise
+   pointer with no hover — the standard signal for "touch, not a mouse". */
+.intro-controls--touch { display: none; }
+@media (pointer: coarse) and (hover: none) {
+  .intro-controls { display: none; }
+  .intro-controls--touch { display: flex; }
+}
+
 @media (max-width: 720px) {
   /* Narrow screens have no room for the world beside the copy, so the scrim
      goes flat and the poster takes the full width. */
@@ -329,6 +338,47 @@ html, body {
 .or { opacity: 0.4; margin: 0 3px; }
 .hint-text { margin-left: 8px; opacity: 0.75; }
 
+/* ---------- Touch controls ----------
+   Steering and pedal buttons, shown instead of the keyboard hint on anything
+   with no precise pointer (same media feature as .intro-controls--touch).
+   On a mouse/keyboard device this whole block stays display:none, so
+   TouchControls.js can bind its listeners unconditionally. */
+#touch-controls {
+  display: none;
+  position: absolute; left: 0; right: 0; bottom: 0;
+  justify-content: space-between; align-items: flex-end;
+  padding: 0 16px calc(16px + env(safe-area-inset-bottom, 0px));
+  /* Stays clear of the minimap, which sits in the bottom-right corner. */
+  padding-right: calc(158px + env(safe-area-inset-right, 0px));
+  pointer-events: none;
+}
+@media (pointer: coarse) and (hover: none) {
+  #touch-controls { display: flex; }
+  #controls-hint { display: none; }
+}
+.touch-btn {
+  pointer-events: auto;
+  display: inline-flex; align-items: center; justify-content: center;
+  border: 1px solid rgba(255,255,255,0.16);
+  background: rgba(8,20,12,0.62);
+  -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px);
+  color: #d7ffb0;
+  font-family: 'JetBrains Mono', monospace; font-weight: 700;
+  touch-action: none; -webkit-user-select: none; user-select: none;
+  -webkit-tap-highlight-color: transparent; -webkit-touch-callout: none;
+  transition: background 0.1s ease, transform 0.1s ease;
+}
+.touch-btn:active { background: rgba(182,255,92,0.3); transform: scale(0.94); }
+
+#touch-steer { display: flex; gap: 10px; }
+.touch-btn--steer { width: 60px; height: 60px; border-radius: 50%; font-size: 20px; }
+
+#touch-pedals { display: flex; flex-direction: column; align-items: stretch; gap: 8px; width: 78px; }
+.touch-btn--reverse { height: 40px; border-radius: 10px; font-size: 13px; }
+.touch-btn--brake { height: 52px; border-radius: 12px; font-size: 12px; letter-spacing: 0.06em; }
+.touch-btn--gas { height: 64px; border-radius: 14px; font-size: 13px; letter-spacing: 0.06em; background: rgba(182,255,92,0.18); border-color: rgba(182,255,92,0.4); }
+.touch-btn--gas:active { background: rgba(182,255,92,0.42); }
+
 /* ---------- Story card ---------- */
 #story-card-wrap {
   position: absolute; inset: 0; z-index: 35;
@@ -388,4 +438,13 @@ html, body {
   #minimap-frame { width: 92px; height: 92px; }
   #minimap-caption { max-width: 104px; font-size: 8.5px; }
   #hud-bottom { bottom: 12px; left: 12px; max-width: calc(100% - 120px); }
+  /* The 158px clearance that dodges the full-size minimap is more than this
+     narrower minimap (right:12px, 92px frame) needs, and on a phone this
+     width the steer + pedal clusters have no room to spare — tighten both. */
+  #touch-controls { padding: 0 12px calc(12px + env(safe-area-inset-bottom, 0px)); padding-right: calc(120px + env(safe-area-inset-right, 0px)); }
+  .touch-btn--steer { width: 52px; height: 52px; font-size: 18px; }
+  #touch-pedals { width: 66px; gap: 6px; }
+  .touch-btn--reverse { height: 34px; font-size: 11px; }
+  .touch-btn--brake { height: 44px; font-size: 10.5px; }
+  .touch-btn--gas { height: 54px; font-size: 11px; }
 }
