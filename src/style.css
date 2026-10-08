@@ -329,6 +329,39 @@ html, body {
 .or { opacity: 0.4; margin: 0 3px; }
 .hint-text { margin-left: 8px; opacity: 0.75; }
 
+/* ---------- Touch controls ----------
+   Hidden by default; body.touch-controls-active (set once at boot for a
+   touch-primary device — see src/utils/touch.js) reveals them and hides the
+   keyboard-only hints instead. */
+#touch-controls { display: none; }
+body.touch-controls-active #touch-controls { display: block; }
+body.touch-controls-active #hud-bottom,
+body.touch-controls-active .intro-controls { display: none; }
+/* The pedal cluster sits where the radar normally does, so give it room. */
+body.touch-controls-active #minimap-wrap { bottom: 154px; }
+
+#touch-steer {
+  position: absolute; left: 18px; bottom: 18px;
+  display: flex; gap: 10px;
+}
+#touch-pedals {
+  position: absolute; right: 18px; bottom: 18px;
+  display: flex; flex-direction: column; gap: 10px;
+}
+.touch-btn {
+  width: 60px; height: 60px;
+  display: grid; place-items: center;
+  border: 1px solid rgba(255,255,255,0.18); border-radius: 16px;
+  background: rgba(8,20,12,0.55); backdrop-filter: blur(6px);
+  color: #eafff0; font-size: 22px; line-height: 1;
+  pointer-events: auto; touch-action: none;
+  -webkit-user-select: none; user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+.touch-btn.is-pressed { background: rgba(182,255,92,0.32); border-color: rgba(182,255,92,0.55); }
+.touch-btn--throttle { color: #b6ff5c; }
+.touch-btn--brake { color: #ff8a65; }
+
 /* ---------- Story card ---------- */
 #story-card-wrap {
   position: absolute; inset: 0; z-index: 35;

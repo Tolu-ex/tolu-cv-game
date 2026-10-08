@@ -1,3 +1,5 @@
+import { isTouchPrimary } from '../utils/touch.js';
+
 const FORWARD_KEYS = new Set(['KeyW', 'ArrowUp']);
 const BACKWARD_KEYS = new Set(['KeyS', 'ArrowDown']);
 const LEFT_KEYS = new Set(['KeyA', 'ArrowLeft']);
@@ -15,10 +17,12 @@ const CAM_UP_KEYS = new Set(['KeyR']);
 const CAM_DOWN_KEYS = new Set(['KeyF']);
 
 /**
- * Keyboard + mouse input.
+ * Keyboard + mouse + touch input.
  *
  * Keyboard drives the truck; the mouse orbits the camera Roblox-style — drag to
- * swing the view around, wheel to zoom. Can be locked during transitions and
+ * swing the view around, wheel to zoom. On a touch-primary device (no
+ * keyboard) the on-screen buttons in #touch-controls drive it instead, set on
+ * the same booleans the keyboard uses. Can be locked during transitions and
  * story cards.
  */
 export class InputController {
@@ -67,6 +71,48 @@ export class InputController {
     document.addEventListener('visibilitychange', this._onVisibility);
 
     this._bindPointer(canvas || window);
+
+    this._touchButtons = null;
+    this._touchCleanup = null;
+    if (isTouchPrimary()) this._bindTouchControls();
+  }
+
+  /**
+   * Wires the on-screen throttle/brake/steering buttons (see index.html
+   * #touch-controls) onto the same booleans the keyboard sets, so Truck and
+   * AudioEngine need no touch-specific branches. Only called on a
+   * touch-primary device; CSS shows the buttons on the same condition.
+   */
+  _bindTouchControls() {
+    const buttons = {
+      forward: document.getElementById('touch-throttle'),
+      brake: document.getElementById('touch-brake'),
+      left: document.getElementById('touch-left'),
+      right: document.getElementById('touch-right'),
+    };
+    if (Object.values(buttons).some((el) => !el)) return;
+
+    this._touchButtons = buttons;
+    this._touchCleanup = [];
+    for (const [prop, el] of Object.entries(buttons)) {
+      const set = (value) => {
+        if (this.locked && value) return; // ignore new presses while locked
+        this[prop] = value;
+        el.classList.toggle('is-pressed', value);
+      };
+      const onDown = (e) => { e.preventDefault(); el.setPointerCapture?.(e.pointerId); set(true); };
+      const onUp = () => set(false);
+      el.addEventListener('pointerdown', onDown);
+      el.addEventListener('pointerup', onUp);
+      el.addEventListener('pointercancel', onUp);
+      el.addEventListener('pointerleave', onUp);
+      this._touchCleanup.push(() => {
+        el.removeEventListener('pointerdown', onDown);
+        el.removeEventListener('pointerup', onUp);
+        el.removeEventListener('pointercancel', onUp);
+        el.removeEventListener('pointerleave', onUp);
+      });
+    }
   }
 
   _bindPointer(el) {
@@ -161,6 +207,9 @@ export class InputController {
   clearKeys() {
     this.forward = this.backward = this.left = this.right = this.brake = false;
     this.camLeft = this.camRight = this.camUp = this.camDown = false;
+    if (this._touchButtons) {
+      for (const el of Object.values(this._touchButtons)) el.classList.remove('is-pressed');
+    }
   }
 
   /**
@@ -213,5 +262,6 @@ export class InputController {
     window.removeEventListener('pointercancel', this._onPointerUp);
     this._el?.removeEventListener('wheel', this._onWheel);
     this._el?.removeEventListener('contextmenu', this._onContextMenu);
+    this._touchCleanup?.forEach((fn) => fn());
   }
 }

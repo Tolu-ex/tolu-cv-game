@@ -1,5 +1,11 @@
 import './style.css';
 import { Game } from './core/Game.js';
+import { isTouchPrimary } from './utils/touch.js';
+
+// Swaps the WASD/keyboard hints for the on-screen touch controls — see
+// #touch-controls and its CSS in style.css. Decided once up front so the
+// title screen never advertises keys a touch-primary device doesn't have.
+if (isTouchPrimary()) document.body.classList.add('touch-controls-active');
 
 const canvas = document.getElementById('scene');
 const loadingScreen = document.getElementById('loading-screen');

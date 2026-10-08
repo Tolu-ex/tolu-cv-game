@@ -62,6 +62,21 @@
             <span class="hint-text">drive · <span class="key">SPACE</span> brake · <span class="key">L</span> lights · <span class="key">Q</span><span class="key">E</span> turn view · <span class="key">R</span><span class="key">F</span> tilt · scroll zoom · <span class="key">C</span> recentre · <span class="key">M</span> mute</span>
           </div>
         </div>
+
+        <!-- Touch controls: on-screen throttle/brake and steering for a
+             touch-primary device (no keyboard). Hidden unless
+             body.touch-controls-active is set; InputController binds them
+             on the same condition. -->
+        <div id="touch-controls">
+          <div id="touch-steer">
+            <button id="touch-left" class="touch-btn" type="button" aria-label="Steer left">◀</button>
+            <button id="touch-right" class="touch-btn" type="button" aria-label="Steer right">▶</button>
+          </div>
+          <div id="touch-pedals">
+            <button id="touch-brake" class="touch-btn touch-btn--brake" type="button" aria-label="Brake">■</button>
+            <button id="touch-throttle" class="touch-btn touch-btn--throttle" type="button" aria-label="Throttle">▲</button>
+          </div>
+        </div>
       </div>
 
       <!-- Story card -->
