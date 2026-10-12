@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { mesh, createWindmill, makeTextTexture } from '../utils/geoBuilders.js';
+import { toonRamp } from '../utils/artDirection.js';
 import { PALETTE } from '../utils/colors.js';
 import { seededRandom } from '../utils/rng.js';
 
@@ -10,13 +11,13 @@ function createTulipField({ bands = 6, rowsPerBand = 6, perRow = 26, spacing = 1
   const group = new THREE.Group();
   const stemGeo = new THREE.CylinderGeometry(0.02, 0.026, 0.35, 4);
   const bulbGeo = new THREE.SphereGeometry(0.09, 6, 6);
-  const stemMat = new THREE.MeshStandardMaterial({ color: C.field, roughness: 0.9, flatShading: true });
+  const stemMat = new THREE.MeshToonMaterial({ color: C.field, gradientMap: toonRamp() });
   const dummy = new THREE.Object3D();
   const rand = seededRandom(101);
 
   for (let band = 0; band < bands; band++) {
     const color = C.tulipColors[band % C.tulipColors.length];
-    const bulbMat = new THREE.MeshStandardMaterial({ color, roughness: 0.55, flatShading: true });
+    const bulbMat = new THREE.MeshToonMaterial({ color, gradientMap: toonRamp() });
     const count = rowsPerBand * perRow;
     const stems = new THREE.InstancedMesh(stemGeo, stemMat, count);
     const bulbs = new THREE.InstancedMesh(bulbGeo, bulbMat, count);
@@ -109,7 +110,7 @@ export function buildContactWorld() {
 
   // Business-card billboard near the end of the field, facing the approach
   const cardTex = businessCard();
-  const cardMat = new THREE.MeshStandardMaterial({ map: cardTex, roughness: 0.5, emissive: 0xffffff, emissiveMap: cardTex, emissiveIntensity: 0.35 });
+  const cardMat = new THREE.MeshToonMaterial({ map: cardTex, gradientMap: toonRamp(), emissive: 0xffffff, emissiveMap: cardTex, emissiveIntensity: 0.35 });
   const CARD_Z = -40;
   // Faces +Z, toward the player driving down the path from the spawn end.
   const card = new THREE.Mesh(new THREE.PlaneGeometry(11, 6), cardMat);

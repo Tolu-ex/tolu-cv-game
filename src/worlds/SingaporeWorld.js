@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { mesh, createSupertree, createBuildingBlock, windowGridTexture } from '../utils/geoBuilders.js';
+import { toonRamp } from '../utils/artDirection.js';
 import { PALETTE } from '../utils/colors.js';
 import { seededRandom } from '../utils/rng.js';
 
@@ -13,7 +14,7 @@ function marinaBaySands() {
   const towers = [];
   for (const x of towerPositions) {
     const tex = windowGridTexture(4, 22, { lit: 0.55, base: '#7a8494', litColor: '#fff2c9', dimColor: '#2a3040' });
-    const mat = new THREE.MeshStandardMaterial({ color: C.tower, roughness: 0.5, metalness: 0.3, flatShading: true, emissiveMap: tex, emissive: 0xffffff, emissiveIntensity: 0.6 });
+    const mat = new THREE.MeshToonMaterial({ color: C.tower, gradientMap: toonRamp(), emissiveMap: tex, emissive: 0xffffff, emissiveIntensity: 0.6 });
     const tower = new THREE.Mesh(new THREE.BoxGeometry(towerW, towerH, 5), mat);
     tower.position.set(x, towerH / 2, 0);
     g.add(tower);

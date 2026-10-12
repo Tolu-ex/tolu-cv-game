@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { mesh, makeTextTexture } from '../utils/geoBuilders.js';
+import { toonRamp } from '../utils/artDirection.js';
 import { PALETTE } from '../utils/colors.js';
 import { seededRandom } from '../utils/rng.js';
 
@@ -22,7 +23,7 @@ function neonTexture(text, color) {
 function neonSign({ text, color, width = 4.2, height = 1.3 } = {}) {
   const g = new THREE.Group();
   const tex = neonTexture(text, `#${color.toString(16).padStart(6, '0')}`);
-  const mat = new THREE.MeshStandardMaterial({ map: tex, transparent: true, emissive: color, emissiveMap: tex, emissiveIntensity: 1.4, roughness: 0.4 });
+  const mat = new THREE.MeshToonMaterial({ map: tex, gradientMap: toonRamp(), transparent: true, emissive: color, emissiveMap: tex, emissiveIntensity: 1.4 });
   const plane = new THREE.Mesh(new THREE.PlaneGeometry(width, height), mat);
   g.add(plane);
   const backing = mesh(new THREE.BoxGeometry(width + 0.2, height + 0.2, 0.08), 0x0c0c10);

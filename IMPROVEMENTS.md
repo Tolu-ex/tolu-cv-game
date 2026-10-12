@@ -56,10 +56,6 @@ in this repo and cost real work.
       bike only, so the vehicles are inked and their surroundings are not.
       Extending it to world props would make the whole thing read as one
       illustration. Watch the draw-call count — the truck alone adds 500.
-- [ ] **The remaining `MeshStandardMaterial`s.** 13 survive on textured signage,
-      tower windows and the Haarlem clock face, where `roughness` is live. They
-      shade as smooth PBR in a cel-shaded scene, so the flat-vector conversion
-      is unfinished on those surfaces.
 - [ ] **Portals.** Still glowing volumetric arches with emissive membranes — a
       realism idiom that fights the flat poster direction everything else now
       follows.
@@ -79,6 +75,11 @@ in this repo and cost real work.
 
 ## Done
 
+- [x] The remaining `MeshStandardMaterial`s converted to `MeshToonMaterial`:
+      the IleIfe entrance sign, Lagos market-stall canopy, Haarlem clock face,
+      Singapore tower windows, the tulip-field stems/bulbs and business-card
+      billboard, and the street-market neon signs. All now sample the shared
+      toon ramp instead of shading as smooth PBR in a cel-shaded scene.
 - [x] Touch controls: on-screen throttle/brake and steering for touch-primary
       devices, keyboard hints hidden on the title screen and HUD when there
       is no keyboard

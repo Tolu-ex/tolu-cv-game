@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { mesh, createPalmTree, createCanopyTree, createBush, makeTextTexture } from '../utils/geoBuilders.js';
+import { toonRamp } from '../utils/artDirection.js';
 import { PALETTE } from '../utils/colors.js';
 import { seededRandom } from '../utils/rng.js';
 
@@ -266,8 +267,8 @@ export function buildIleIfeWorld() {
   // Entrance sign, set back on the verge.
   const signPost = new THREE.Group();
   const tex = signTexture();
-  const signMat = new THREE.MeshStandardMaterial({
-    map: tex, emissive: 0xffffff, emissiveMap: tex, emissiveIntensity: 0.35, roughness: 0.8,
+  const signMat = new THREE.MeshToonMaterial({
+    map: tex, gradientMap: toonRamp(), emissive: 0xffffff, emissiveMap: tex, emissiveIntensity: 0.35,
   });
   const signPlane = new THREE.Mesh(new THREE.PlaneGeometry(7.4, 4.3), signMat);
   signPlane.position.set(0, 4.0, 0);

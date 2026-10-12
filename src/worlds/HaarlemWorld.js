@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { mesh, createCanalHouse, createWindmill, createBike, createLampPost, makeTextTexture } from '../utils/geoBuilders.js';
+import { toonRamp } from '../utils/artDirection.js';
 import { PALETTE } from '../utils/colors.js';
 import { seededRandom } from '../utils/rng.js';
 
@@ -30,7 +31,7 @@ function towerBuilding({ width = 6.5, depth = 6.5, height = 22, spireHeight = 12
   const body = mesh(new THREE.BoxGeometry(width, height, depth), color);
   body.position.y = height / 2;
   g.add(body);
-  const clockFace = new THREE.Mesh(new THREE.CircleGeometry(width * 0.28, 20), new THREE.MeshStandardMaterial({ map: clockTexture(), roughness: 0.6 }));
+  const clockFace = new THREE.Mesh(new THREE.CircleGeometry(width * 0.28, 20), new THREE.MeshToonMaterial({ map: clockTexture(), gradientMap: toonRamp() }));
   clockFace.position.set(0, height * 0.78, depth / 2 + 0.05);
   g.add(clockFace);
   const spire = mesh(new THREE.ConeGeometry(width * 0.62, spireHeight, 4), C.roofSlate);

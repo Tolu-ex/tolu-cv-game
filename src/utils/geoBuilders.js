@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { posterMaterial, flatMaterial } from './artDirection.js';
+import { posterMaterial, flatMaterial, toonRamp } from './artDirection.js';
 import { seededRandom } from './rng.js';
 
 // Decorative scatter (foliage clumps, lit windows) runs off a seeded stream
@@ -373,8 +373,8 @@ export function createCanalHouse({ width = 3.4, depth = 3.6, floors = 3, floorH 
 export function createBuildingBlock({ w = 6, h = 20, d = 6, color = 0xd8d8d8, lit = true } = {}) {
   const g = new THREE.Group();
   const tex = lit ? windowGridTexture(Math.max(2, Math.round(w / 1.5)), Math.max(4, Math.round(h / 2))) : null;
-  const bodyMat = new THREE.MeshStandardMaterial({
-    color, roughness: 0.7, metalness: 0.15, flatShading: true,
+  const bodyMat = new THREE.MeshToonMaterial({
+    color, gradientMap: toonRamp(),
     emissiveMap: tex || null, emissive: lit ? 0xffffff : 0x000000, emissiveIntensity: lit ? 0.55 : 0,
   });
   const body = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), bodyMat);
