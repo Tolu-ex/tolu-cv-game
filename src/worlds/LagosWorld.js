@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { mesh, createBuildingBlock, makeTextTexture } from '../utils/geoBuilders.js';
+import { toonRamp } from '../utils/artDirection.js';
 import { PALETTE } from '../utils/colors.js';
 import { seededRandom } from '../utils/rng.js';
 
@@ -17,7 +18,7 @@ function stallCanopy() {
 
 function marketStall({ roofColor = C.stallRoof, goodsColor = 0xe0a83f } = {}) {
   const g = new THREE.Group();
-  const canopyMat = new THREE.MeshStandardMaterial({ map: stallCanopy(), roughness: 0.8, flatShading: true });
+  const canopyMat = new THREE.MeshToonMaterial({ map: stallCanopy(), gradientMap: toonRamp() });
   const canopy = new THREE.Mesh(new THREE.BoxGeometry(2.6, 0.15, 1.8), canopyMat);
   canopy.position.y = 2.1;
   g.add(canopy);
