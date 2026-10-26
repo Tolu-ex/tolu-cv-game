@@ -52,10 +52,6 @@ in this repo and cost real work.
 
 ## Art direction
 
-- [ ] **Outlines on the worlds.** `addOutlines` is applied to the truck and the
-      bike only, so the vehicles are inked and their surroundings are not.
-      Extending it to world props would make the whole thing read as one
-      illustration. Watch the draw-call count — the truck alone adds 500.
 - [ ] **The remaining `MeshStandardMaterial`s.** 13 survive on textured signage,
       tower windows and the Haarlem clock face, where `roughness` is live. They
       shade as smooth PBR in a cel-shaded scene, so the flat-vector conversion
@@ -79,6 +75,14 @@ in this repo and cost real work.
 
 ## Done
 
+- [x] Outlines on the worlds: `addOutlines` now runs over every world's prop
+      group as well as the two vehicles, so world geometry gets the same ink.
+      `addOutlines` itself was hardened first — it now skips `InstancedMesh`
+      (would have mis-outlined the tulip field) and skips a part that already
+      carries an outline child (would have double-inked the hub dragon, which
+      inks itself before joining the world group). Draw calls roughly double
+      per world (measured headlessly, see PR); not yet confirmed on screen or
+      on a real frame budget.
 - [x] Touch controls: on-screen throttle/brake and steering for touch-primary
       devices, keyboard hints hidden on the title screen and HUD when there
       is no keyboard

@@ -76,6 +76,18 @@ export function addOutlines(root, { thickness = 0.0026, color = 0x16240a, minSiz
 
   let added = 0, skipped = 0;
   for (const mesh of targets) {
+    // An instanced mesh draws one geometry at many transforms; a single child
+    // shell would only ink one of them, sitting at whatever the instanced
+    // mesh's own (usually identity) transform is. Scatter like the tulip
+    // field is instanced for exactly this reason, so it is skipped rather
+    // than mis-outlined.
+    if (mesh.isInstancedMesh) { skipped++; continue; }
+
+    // A part already carrying its own outline (the hub dragon is inked at
+    // its own thickness before it joins the world group) must not get a
+    // second shell from a broader pass over its parent.
+    if (mesh.children.some((c) => c.userData.isOutline)) { skipped++; continue; }
+
     // Transparent things (glass, lamp lenses) must not be inked — an outline
     // around a window makes it read as a solid panel.
     if (mesh.material?.transparent) { skipped++; continue; }
