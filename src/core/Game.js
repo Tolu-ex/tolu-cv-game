@@ -232,6 +232,11 @@ export class Game {
 
     this._clearCurrentWorld();
     this.scene.add(desc.group);
+    // Same ink as the vehicles, so the world reads as one illustration rather
+    // than an inked truck driving through flat-shaded scenery. Instanced
+    // scatter (the tulip field) is skipped by addOutlines itself.
+    const worldInk = addOutlines(desc.group, { thickness: 0.0026, color: 0x16240a });
+    console.info(`[world:${id}] outlined ${worldInk.added} parts (${worldInk.skipped} skipped)`);
     this.currentWorldGroup = desc.group;
     this.currentWorldUpdate = desc.update || null;
     this.currentBounds = desc.bounds || 120;
